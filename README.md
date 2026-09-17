@@ -69,12 +69,21 @@ Connectors are modular: `service/connectors/` — add one file + one line in `co
 
 `config/service.yaml` controls default connectors, model defaults, memory `similarity_threshold: 0.85` (prevents fall vs cause-of-fall blur), and retriever enablement. Per-request `connectors`/`models` override defaults.
 
+## Private roadmap — reproducible 1→2→3
+
+> Monetizable, private vs shareable split is documented in **private** `docs/ROADMAP_SERVICE_PRIVATE.md` (warehouse/host/table names, 20→40→200 plan, 1→2→3 order, 65ms warm + 120/120 + procedure `88` same sig `6d8cef7d`). `swarm_procedures` traces are shareable; `testing.*` + `quality_platform` bronze/silver stay private.
+
 ## Tests & validation
 
 ```bash
 PYTHONPATH=../cognitive-swarm:$PYTHONPATH pytest -q  # 8/8, includes live Databricks
 # 120/120 deterministic via service (0 loads, even with Databricks enabled)
 PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -c "from cognitive_swarm.evaluation.leveled_benchmark import LEVELED_PROBLEMS, check_answer; ...; print(f'{ok}/120')"
+# 20→20 procedure demo (new numbers, same reasoning, trace in sources[])
+PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 scripts/generate_procedures.py  # 20/20
+python3 scripts/seed_procedures.py  # Databricks 20 + local 27, verifiable
+python3 scripts/distill_to_qwen.py  # TF-IDF CV 0.962 + Qwen LoRA command
+curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -d '{"question":"In a group of 88 people each shakes hands with every other exactly once how many handshakes?"}' | python3 -m json.tool # -> 3828 tier: procedure
 ```
 
 ## Docker
