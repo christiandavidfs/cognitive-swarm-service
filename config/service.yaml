@@ -1,0 +1,84 @@
+# Cognitive Swarm Service config — all connectors/models declared here, no code change to add one.
+# Per-request `connectors`/`models` override these defaults.
+
+service:
+  host: "0.0.0.0"
+  port: 8000
+  # cors origins, log level, etc.
+  log_level: "info"
+
+# Default Tier 3 connectors (category-gated per Retriever.categories).
+# enabled:false stays registered but not queried unless caller asks for it explicitly.
+connectors:
+  # L3 factual / contested — reliability = authority weight used by Corroborator
+  wikidata:
+    enabled: true
+    reliability: 0.8
+    timeout_s: 5
+    cache_ttl_s: 86400
+  openalex:
+    enabled: true
+    reliability: 0.9
+    timeout_s: 6
+    cache_ttl_s: 3600
+    # Semantic Scholar alt: set provider: semantic_scholar + SEMANTIC_SCHOLAR_API_KEY env
+  local_docs:
+    enabled: true
+    reliability: 0.8
+    source_dir: "../cognitive-swarm/retrieval_corpus"
+    match_threshold: 0.35
+    chunk_size: 3
+  # Stubs — modular, scalable; fill credentials via env, flip enabled:true
+  confluence:
+    enabled: false
+    reliability: 0.85
+    base_url: "${CONFLUENCE_BASE_URL}"
+    # space, auth via CONFLUENCE_API_TOKEN env
+  databricks_sql:
+    enabled: false
+    reliability: 1.0
+    warehouse_id: "${DATABRICKS_WAREHOUSE_ID}"
+    # DATABRICKS_HOST + DATABRICKS_TOKEN env
+  postgres:
+    enabled: false
+    reliability: 1.0
+    dsn: "${POSTGRES_DSN}"   # postgresql://user:pass@host/db
+  generic_http:
+    enabled: false
+    reliability: 0.6
+    base_url: "${GENERIC_HTTP_BASE_URL}"
+
+# Model registry — choosable per request via `models: ["phi","qwen","minimax-m3",...]`
+# type: mlx | api (openai-compatible). MLX models load sequentially on 8GB (one at a time).
+models:
+  phi:
+    enabled: true
+    type: mlx
+    path: "mlx-community/phi-3.5-mini-instruct-4bit"
+    strengths: ["reasoning", "math", "logic"]
+    ram_gb: 2.5
+  qwen:
+    enabled: true
+    type: mlx
+    path: "mlx-community/Qwen2.5-3B-Instruct-4bit"
+    strengths: ["code", "math"]
+    ram_gb: 2.0
+  qwen_05b:
+    enabled: false
+    type: mlx
+    path: "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+    strengths: ["routing"]
+    ram_gb: 1.0
+  minimax-m3:
+    enabled: false   # needs OPENROUTER_API_KEY env to activate
+    type: api
+    model: "minimax/minimax-m3:free"
+    base_url: "https://openrouter.ai/api/v1"
+    api_key_env: "OPENROUTER_API_KEY"
+    strengths: ["general"]
+
+memory:
+  # VerifiedMemory JSON path (persists Tier 0). Procedure store shares it (procedure_sig field).
+  path: "./data/verified_memory.json"
+  similarity_threshold: 0.75
+  procedure_enabled: true

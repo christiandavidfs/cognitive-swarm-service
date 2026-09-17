@@ -1,0 +1,18 @@
+services:
+  swarm-service:
+    build:
+      context: ..
+      dockerfile: cognitive-swarm-service/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      # Wire your chosen LLM for Tier 4 / /models if needed:
+      # OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # DATABRICKS_HOST: ${DATABRICKS_HOST:-}
+      # DATABRICKS_TOKEN: ${DATABRICKS_TOKEN:-}
+      # CONFLUENCE_BASE_URL: ${CONFLUENCE_BASE_URL:-}
+      # CONFLUENCE_API_TOKEN: ${CONFLUENCE_API_TOKEN:-}
+      MEMORY_PATH: /app/data/verified_memory.json
+    command: uvicorn service.app:app --host 0.0.0.0 --port 8000 --log-level info
