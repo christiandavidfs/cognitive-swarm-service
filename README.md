@@ -71,7 +71,7 @@ Connectors are modular: `service/connectors/` — add one file + one line in `co
 
 ## Private roadmap — reproducible 1→2→3
 
-> Monetizable, private vs shareable split is documented in **private** `docs/ROADMAP_SERVICE_PRIVATE.md` (warehouse/host/table names, 20→40→200 plan, 1→2→3 order, 65ms warm + 120/120 + procedure `88` same sig `6d8cef7d`). `swarm_procedures` traces are shareable; `testing.*` + `quality_platform` bronze/silver stay private.
+> Nothing public. Monetizable, private is documented in **private** `docs/ROADMAP_SERVICE_PRIVATE.md` (warehouse/host/table names, 20→40→200 plan, 1→2→3 order, 65ms warm + 120/120 + procedure `88` same sig `6d8cef7d`). `swarm_procedures` traces, `testing.*`, `quality_platform` bronze/silver all private.
 
 ## Tests & validation
 

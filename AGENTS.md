@@ -25,14 +25,14 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
 * `student_trace.py:25` `20` templates verifiable (`=` + digits), `verify_trace` used by distill.
 * Modules: `service/app.py:55` (FastAPI), `service/memory/procedure_store.py:40` (trace+sig), `service/connectors/databricks.py:36` (Statement API, `LIMIT 5` for contested), `service/models/registry.py:40` (MLX/API).
 
-## Private vs shareable
+## Private — nothing public
 
 | Data | Location | Visibility |
 |------|----------|------------|
-| Private `testing.swarm_knowledge` raw Q/A | `testing.testing_schema` `ISOLATED` | Private, scoped `query_template` |
-| Private `quality_platform` bronze/silver | `quality_platform.*` | Private, not queried |
-| Shareable `swarm_procedures` traces | `testing...swarm_procedures` + `data/verified_memory.json` traces | Shareable as `procedure:handshake` with `trace` |
-| Private `DATABRICKS_HOST/TOKEN` `warehouse 2b2636...` | `~/.databricks` `personal` | Private, `.gitignore` |
+| `testing.swarm_knowledge` raw Q/A | `testing.testing_schema` `ISOLATED` | **Private** |
+| `quality_platform` bronze/silver | `quality_platform.*` | **Private**, not queried |
+| `swarm_procedures` traces | `testing...swarm_procedures` + `data/verified_memory.json` traces | **Private** (was shareable, now private per owner — nothing public) |
+| `DATABRICKS_HOST/TOKEN` `warehouse 2b2636...` | `~/.databricks` `personal` | **Private**, `.gitignore` |
 
 ## Operational facts
 
@@ -52,4 +52,4 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
 
 * After **every** change: `python -m py_compile service/app.py service/connectors/*.py service/memory/*.py service/models/*.py`, `pytest -q` `8/8`, `curl` new-numbers `tier: procedure`, update `docs/ROADMAP_SERVICE_PRIVATE.md` + this file + `README.md`.
 * No bare answer: `Resolution(answer, confidence, sources, disagreement, trace)`.
-* Docs: `docs/ROADMAP_SERVICE_PRIVATE.md` (private, reproducible), `README.md` public shareable.
+* Docs: `docs/ROADMAP_SERVICE_PRIVATE.md` (private, reproducible, nothing public), `README.md` private.

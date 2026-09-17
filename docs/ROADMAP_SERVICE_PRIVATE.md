@@ -1,6 +1,6 @@
 # ROADMAP Service — Private, Reproducible, Implementable
 
-> Private doc. Contains warehouse/host/table names and monetization notes. Do not publish as-is. Public shareable surface is `swarm_procedures` traces only (see §1).
+> Private doc. Contains warehouse/host/table names and monetization notes. Nothing public. Do not publish as-is.
 
 ## 0. Current state (2026-09-17, commit de875eb)
 
@@ -10,18 +10,18 @@
 * Databricks: `testing.testing_schema.swarm_knowledge` 7 rows, `testing.testing_schema.swarm_procedures` 20 rows (Delta), `quality_platform` bronze (`api_endpoints` etc.) + silver remain but not queried by default (scoped to `testing.swarm_*`).
 * Verified: `120/120` via `POST /resolve` `0 loads`, `POST /resolve` new numbers `88` hits `tier: procedure, trace in sources[]`.
 
-## 1. Private vs shareable (business)
+## 1. Private — nothing public (business)
 
 | Data | Location | Visibility | How service uses it |
 |------|----------|------------|---------------------|
-| **Private** `testing.*` sample (`swarm_knowledge` raw Q/A) | `testing.testing_schema.swarm_knowledge` `ISOLATED` `658fac0b` | Private — only via `databricks_sql` `query_template` `config/service.yaml:37` | Tier 3 source, `reliability 1.0`, `LIMIT 5` for contested `disagreement` |
-| **Private** `quality_platform` bronze/silver (`api_endpoints`, `coverage_*`) | `quality_platform.*` `OPEN` `ae811f5e` | Private — not in `databricks_sql` query, future `Confluence`/`Postgres` stubs | Not on hot path, for internal quality dashboards |
-| **Shareable** `swarm_procedures` trace lake | `testing.testing_schema.swarm_procedures` `20` rows, also `data/verified_memory.json` traces | Shareable as `procedure:handshake` traces, not raw private tables | `POST /resolve` returns `{sources:[{name: procedure:handshake, trace, procedure_sig}]}` — monetizable |
-| **Private** `data/verified_memory.json`, `*.pkl`, `.env`, `DATABRICKS_TOKEN` | `cognitive-swarm-service/data/` + `~/.databricks` `personal` `host=dbc-118c...` `warehouse=2b2636...` | Private | `.gitignore` already |
+| `testing.*` sample (`swarm_knowledge` raw Q/A) | `testing.testing_schema.swarm_knowledge` `ISOLATED` `658fac0b` | **Private** — only via `databricks_sql` `query_template` `config/service.yaml:37` | Tier 3 source, `reliability 1.0`, `LIMIT 5` for contested `disagreement` |
+| `quality_platform` bronze/silver (`api_endpoints`, `coverage_*`) | `quality_platform.*` `OPEN` `ae811f5e` | **Private** — not in `databricks_sql` query, future `Confluence`/`Postgres` stubs | Not on hot path, for internal quality dashboards |
+| `swarm_procedures` trace lake | `testing.testing_schema.swarm_procedures` `20` rows, also `data/verified_memory.json` traces | **Private** — nothing public, `POST /resolve` returns `{sources:[{name: procedure:handshake, trace, procedure_sig}]}` internally | Procedure reuse, monetizable internally |
+| `data/verified_memory.json`, `*.pkl`, `.env`, `DATABRICKS_TOKEN` | `cognitive-swarm-service/data/` + `~/.databricks` `personal` `host=dbc-118c...` `warehouse=2b2636...` | **Private** | `.gitignore` already |
 
-Monetize options (undecided, IA for investigation / market):
-* **IA investigation** — `POST /resolve` tier `procedure` + `retrieval` with provenance as paid API (investigation teams query private `swarm_knowledge` + get shareable `trace`).
-* **Market** — `swarm_procedures` `procedure_sig` marketplace: license skeleton (`6d8cef7d`) not private `quality_platform` data.
+Monetize options (undecided, IA for investigation / market, all private):
+* **IA investigation** — `POST /resolve` tier `procedure` + `retrieval` with provenance as private API (investigation teams query private `swarm_knowledge` + get private `trace`).
+* **Market** — `swarm_procedures` `procedure_sig` marketplace: license skeleton (`6d8cef7d`) — also private until licensed.
 
 ## 2. Reproducible quickstart (copy-paste)
 

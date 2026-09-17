@@ -1,6 +1,6 @@
 # Workflow — After Every Change, Update Agents & Docs (reproducible)
 
-> Rule: no code lands without doc sync. Both repos are private, so private details stay in `docs/ROADMAP_SERVICE_PRIVATE.md` + `AGENTS.md`; public shareable is `procedure:trace` only.
+> Rule: no code lands without doc sync. Both repos are private — nothing public. All details stay in `docs/ROADMAP_SERVICE_PRIVATE.md` + `AGENTS.md`.
 
 ## 1. How to proceed after every change (checklist)
 
@@ -62,10 +62,9 @@ chmod +x .git/hooks/pre-commit
 # same for core repo: cp .git/hooks/pre-commit /Users/kaizen/repos/cognitive-swarm/.git/hooks/pre-commit
 ```
 
-## 4. Private vs shareable guard (business)
+## 4. Private guard (business — nothing public)
 
-* Private (never push to public): `testing.testing_schema.swarm_knowledge` raw, `quality_platform` bronze/silver, `DATABRICKS_HOST/TOKEN` `warehouse 2b2636...`, `data/verified_memory.json`, `*.pkl`.
-* Shareable: `swarm_procedures` `trace` + `procedure_sig` via `POST /resolve sources[]`.
+* Private (nothing public, never push): `testing.testing_schema.swarm_knowledge` raw, `swarm_procedures` traces + `procedure_sig`, `quality_platform` bronze/silver, `DATABRICKS_HOST/TOKEN` `warehouse 2b2636...`, `data/verified_memory.json`, `*.pkl`, `procedure:trace` in `POST /resolve sources[]`.
 
 ## 5. Current doc map
 
