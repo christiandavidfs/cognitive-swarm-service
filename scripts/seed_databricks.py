@@ -189,4 +189,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # Friendly hint when invoked as `python` on macOS where only `python3` exists
+    if sys.version_info[0] < 3:
+        print("Use python3, not python (macOS): python3 scripts/seed_databricks.py --verify", file=sys.stderr)
+        sys.exit(1)
     main()
