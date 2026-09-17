@@ -6,7 +6,7 @@
 
 POC that wraps `../cognitive-swarm` (`TruthRouter` Tiers 0-4) into `FastAPI` at `service/app.py:141` — 65ms warm, 0 loads on deterministic tiers. Adds:
 
-* **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `20` traces seeded (`scripts/seed_procedures.py:1` `20/20` verifiable, `testing.testing_schema.swarm_procedures` `20` rows).
+* **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `40` traces seeded (`scripts/seed_procedures.py:1` `40/40` verifiable, `testing.testing_schema.swarm_procedures` `40` rows, `46` patterns `184` samples `CV 0.951`).
 * **Pluggable connectors** `service/connectors/registry.py:29` — `config/service.yaml:37` declares `wikidata 0.8` + `openalex 0.9` + `databricks_sql` live (`testing.swarm_knowledge` 7 rows, `Statement API` `warehouses/2b2636d0ca412cdb` auto-start, token via `databricks auth token`), plus stubs `confluence`/`postgres`/`generic_http` (one file + one YAML line).
 * **Model registry** `service/models/registry.py:1` — `phi`/`qwen` MLX sequential (8GB) + `minimax-m3` API, choosable per-request `POST /resolve {models:[...]}`.
 * **Thinking matrix async** `service/jobs/debate_job.py:22` — not on hot path, verifies via `TruthRouter.verify_candidate` then `remember_trace`.
@@ -22,7 +22,7 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
               → Tier 1 code → 2b string → 2d reasoning (give/take disambiguated before student) → 2c math → 2 calc → 3 retrieval (category-gated, reliability+independence) → 4 debate async
 ```
 * `reasoning_primitives.py:42` `take_away` before student, `give away → simple_subtract` also before student (TF-IDF confuses them).
-* `student_trace.py:25` `20` templates verifiable (`=` + digits), `verify_trace` used by distill.
+* `student_trace.py:25` `33` templates verifiable (`=` + digits, `20→33` with stock `moses/bear/race...`), `verify_trace` used by distill.
 * Modules: `service/app.py:55` (FastAPI), `service/memory/procedure_store.py:40` (trace+sig), `service/connectors/databricks.py:36` (Statement API, `LIMIT 5` for contested), `service/models/registry.py:40` (MLX/API).
 
 ## Private — nothing public
@@ -44,7 +44,7 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
 
 ## Open items (turn into tasks)
 
-* Phase 1 `20→40` stock patterns `moses/bear/race...` `32→47`, `batch200` human, reseed.
+* Phase 1 `40→60` `batch200` human (was `20→40` done), `40` traces live `46` patterns `CV 0.951`.
 * Phase 2 Qwen LoRA `question→trace` `mlx_lm.lora --iters 150` on `40` traces.
 * Phase 3 Vector Search hybrid for `1000+` docs.
 

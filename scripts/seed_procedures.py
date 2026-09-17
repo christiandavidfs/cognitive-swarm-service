@@ -33,6 +33,28 @@ PROCEDURES_Q = [
     "You have a 9 liter jug and a 6 liter jug, what exact amount cannot be measured?",
     "A bag has 8 blue and 4 red balls, what is the probability of drawing a red ball?",
     "You have 15 apples and you take away 6, how many do you have?",
+    # 13 stock breaking — 47 patterns total
+    "How many animals of each kind did Moses take on the ark?",
+    "A house has all four walls facing south, a bear walks by, what color is the bear?",
+    "If you overtake the second person in a race, what place are you in?",
+    "What gets wetter as it dries?",
+    "What has keys but no locks, space but no room?",
+    "What has an eye but cannot see?",
+    "How many bricks does it take to complete a building?",
+    "A man has 3 daughters each daughter has a brother how many children does he have?",
+    "You have 12 eggs 3 break 3 fry 3 eat how many left?",
+    "What has an eye at the tip but cannot see?",
+    "Magnesium concrete sings when folded is this nonsense?",
+    "What is the capital of France?",
+    "How many sides does a circle have?",
+    # 7 extra variations with new numbers (show procedure reuse)
+    "In a group of 150 people each shakes hands with every other exactly once how many handshakes?",
+    "Twenty people can build a shed in 12 days how many people are needed to build it in 4 days?",
+    "A snail at the bottom of a 40-foot well climbs 5 feet each day and slides back 2 feet each night, how many days to reach the top?",
+    "Two trains 600 km apart travel toward each other at 80 km/h and 40 km/h, when do they meet?",
+    "A cube cut into 125 equal smaller cubes, how many have exactly one face painted?",
+    "A rope 90 cm long is cut so one piece is 2 times as long as the other, how long is the shorter piece?",
+    "What is the 40th odd positive integer?",
 ]
 
 def get_token():
