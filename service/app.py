@@ -61,17 +61,29 @@ _memory: Optional[ProcedureStore] = None
 _router: Optional[TruthRouter] = None
 _start_time = time.time()
 
+def _memory_config() -> dict:
+    """Read memory.similarity_threshold from config/service.yaml (fallback 0.85)."""
+    cfg_path = Path(__file__).parent.parent / "config" / "service.yaml"
+    try:
+        import yaml
+        data = yaml.safe_load(cfg_path.read_text()) or {}
+        mem = data.get("memory", {}) if isinstance(data, dict) else {}
+        return {"similarity_threshold": float(mem.get("similarity_threshold", 0.85))}
+    except Exception:
+        return {"similarity_threshold": 0.85}
+
 def get_memory() -> ProcedureStore:
     global _memory
     if _memory is None:
-        # Resolve data path relative to service repo, allow override via MEMORY_PATH env
+        cfg = _memory_config()
+        thr = cfg.get("similarity_threshold", 0.85)
         p = os.getenv("MEMORY_PATH")
         if p:
-            _memory = ProcedureStore(path=Path(p))
+            _memory = ProcedureStore(path=Path(p), similarity_threshold=thr)
         else:
             data_path = Path(__file__).parent.parent / "data" / "verified_memory.json"
             data_path.parent.mkdir(parents=True, exist_ok=True)
-            _memory = ProcedureStore(path=data_path)
+            _memory = ProcedureStore(path=data_path, similarity_threshold=thr)
     return _memory
 
 def get_router() -> TruthRouter:

@@ -54,16 +54,49 @@ class DatabricksSQLRetriever(Connector):
         self.timeout_s = int(timeout_s)
         self.cache_ttl_s = int(cache_ttl_s)
         self.host = (host or os.getenv("DATABRICKS_HOST") or "").rstrip("/")
-        self.token = token or os.getenv("DATABRICKS_TOKEN")
+        self.token = token or os.getenv("DATABRICKS_TOKEN") or self._fetch_cli_token()
         self.catalog = catalog
         self.schema = schema
         self.query_template = query_template
         self._cache: Dict[str, tuple] = {}
 
+    @staticmethod
+    def _fetch_cli_token() -> Optional[str]:
+        """Auto-fetch token via `databricks auth token` (U2M) if env not set — POC convenience, 1h TTL."""
+        try:
+            import subprocess, json
+            out = subprocess.check_output(["databricks", "auth", "token", "--output", "json"], timeout=5)
+            data = json.loads(out.decode())
+            return data.get("access_token")
+        except Exception:
+            return None
+
+    def _refresh_token_if_needed(self):
+        if not self.token:
+            self.token = self._fetch_cli_token()
+
     def _headers(self) -> Dict[str, str]:
+        self._refresh_token_if_needed()
         return {"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"}
 
     def get_claims(self, question: str) -> List[SourceClaim]:
+        self._refresh_token_if_needed()
+        # Default host from CLI config if not set
+        if not self.host:
+            try:
+                import subprocess
+                host = subprocess.check_output(["databricks", "auth", "profiles", "--output", "json"], timeout=5)
+                import json
+                profiles = json.loads(host.decode())
+                # profiles is list like [{"name":"personal","host":"https://...","valid":true}]
+                for p in profiles if isinstance(profiles, list) else []:
+                    if p.get("host"):
+                        self.host = p["host"].rstrip("/")
+                        break
+                if not self.host and isinstance(profiles, dict):
+                    self.host = profiles.get("host","").rstrip("/")
+            except Exception:
+                pass
         if not self.host or not self.token or not self.warehouse_id:
             logger.debug("Databricks not configured (host/token/warehouse_id missing)")
             return []
@@ -103,15 +136,19 @@ class DatabricksSQLRetriever(Connector):
                 arr = data["data_array"]
             if not arr:
                 return []
-            # Expect columns: answer, source, reliability (best-effort)
+            # Expect columns: answer, source, reliability (best-effort) — collect ALL rows for conflict demo
+            claims = []
             for row in arr:
                 ans = str(row[0]).strip() if row else ""
                 if not ans:
                     continue
                 src = str(row[1]).strip() if len(row) > 1 and row[1] else "databricks"
-                rel = float(row[2]) if len(row) > 2 and row[2] else self.reliability
-                return [SourceClaim(source=f"databricks:{src}", answer=ans, reliability=rel, independent=True, reason="Databricks SQL")]
-            return []
+                try:
+                    rel = float(row[2]) if len(row) > 2 and row[2] else self.reliability
+                except Exception:
+                    rel = self.reliability
+                claims.append(SourceClaim(source=f"databricks:{src}", answer=ans, reliability=rel, independent=True, reason="Databricks SQL"))
+            return claims
         except Exception as e:
             logger.warning("Databricks SQL failed: %s", e)
             return []

@@ -33,6 +33,9 @@ def _procedure_sig(trace: str) -> str:
 class ProcedureStore(VerifiedMemory):
     """VerifiedMemory with trace support. Drop-in replacement for TruthRouter memory."""
 
+    def __init__(self, path=None, similarity_threshold: float = 0.85):
+        super().__init__(path=path, similarity_threshold=similarity_threshold)
+
     def remember(
         self,
         question: str,
