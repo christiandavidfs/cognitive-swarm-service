@@ -6,8 +6,8 @@
 
 * Service repo `cognitive-swarm-service` private `https://github.com/christiandavidfs/cognitive-swarm-service` `feat/procedures-40` (next merge to `main`), build mode.
 * Core `cognitive-swarm` private `1972313` + `feat/procedures-40` (give/take fix + `33` templates `40/40`, `46` patterns `184` samples `CV 0.951`).
-* Tiers: `service/app.py:141` L0 `ProcedureStore` `service/memory/procedure_store.py:7` `similarity_threshold 0.85` `config/service.yaml:80` → L1 `procedure` tier on new numbers (same `procedure_sig 6d8cef7d`, TF-IDF `0.26ms`, no load) → L2 deterministic `reasoning_primitives.py`/`student_trace.py` `40/40` verifiable → L3 `Wikidata 0.8` + `OpenAlex 0.9` + **Databricks live** `service/connectors/databricks.py:36` Statement API `warehouses/2b2636d0ca412cdb` Serverless Starter `dbc-118c13a0-9998.cloud.databricks.com`.
-* Databricks: `testing.testing_schema.swarm_knowledge` 7 rows, `testing.testing_schema.swarm_procedures` `40` rows (Delta), `quality_platform` bronze (`api_endpoints` etc.) + silver remain but not queried by default (scoped to `testing.swarm_*`).
+* Tiers: `service/app.py:141` L0 `ProcedureStore` `service/memory/procedure_store.py:7` `similarity_threshold 0.85` `config/service.yaml:80` → L1 `procedure` tier on new numbers (same `procedure_sig 6d8cef7d`, TF-IDF `0.26ms`, no load) → L2 deterministic `reasoning_primitives.py`/`student_trace.py` `60/60` verifiable → L3 `Wikidata 0.8` + `OpenAlex 0.9` + **Databricks live** `service/connectors/databricks.py:36` Statement API `warehouses/2b2636d0ca412cdb` Serverless Starter `dbc-118c13a0-9998.cloud.databricks.com`.
+* Databricks: `testing.testing_schema.swarm_knowledge` 7 rows, `testing.testing_schema.swarm_procedures` `60` rows (Delta), `quality_platform` bronze (`api_endpoints` etc.) + silver remain but not queried by default (scoped to `testing.swarm_*`).
 * Verified: `120/120` via `POST /resolve` `0 loads`, `POST /resolve` new numbers `88` hits `tier: procedure, trace in sources[]`, stock `moses/bear/race` `13` new `46` patterns.
 
 ## 1. Private — nothing public (business)
@@ -60,9 +60,9 @@ python3 scripts/generate_procedures.py  # 20/20 verifiable
 
 ## 3. Phases — 1→2→3 (smartest order)
 
-### Phase 1 — 20→40 procedures + 200-human (5-7d, first, unlocks 2-3)
-* Files: `scripts/generate_procedures.py:20` `40/40` now `33` templates `40/40` `46` patterns `184` `CV 0.951` → next `40→60` add `batch200` human, `scripts/seed_procedures.py:1` `--clear` reseed `testing.swarm_procedures` `40→60`.
-* Acceptance: `POST /resolve` new numbers `tier: procedure` on 3 variants (handshake `88`, stock `moses`, `bear`), `batch200_final.json` `>85%`, Databricks `select count(*) =40` now `40`.
+### Phase 1 — 40→60 procedures + 200-human (5-7d, first, unlocks 2-3)
+* Files: `scripts/generate_procedures.py:20` `40/40` now `33` templates `40/40` `46` patterns `184` `CV 0.951` → next `60→80` add `batch200` human, `scripts/seed_procedures.py:1` `--clear` reseed `testing.swarm_procedures` `40→60`.
+* Acceptance: `POST /resolve` new numbers `tier: procedure` on 3 variants (handshake `88`, stock `moses`, `bear`), `batch200_final.json` `>85%`, Databricks `select count(*) =60` now `40`.
 * Why first: DONE `20→40`, next is `40→60`; fixes `66%→47%` `docs/FINDINGS_STUDENT.md:33` without GPU; 2-3 need fresh verified traces to avoid collapse `THESIS.md:7.5`.
 
 ### Phase 2 — Distill to Qwen question→trace (parallel day 3, 1d train)
