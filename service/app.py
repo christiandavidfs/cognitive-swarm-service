@@ -155,20 +155,52 @@ def resolve(req: ResolveRequest):
     q = (req.question or "").strip()
     if not q:
         raise HTTPException(status_code=400, detail="question is required")
+    # --- L1 procedure memory: reuse stored reasoning skeleton with NEW numbers (0 loads, ~0.3ms) ---
+    # This is the "process not data" tier: same pattern, different numbers -> same procedure_sig
+    mem = get_memory()
+    proc = mem.resolve_via_procedure(q) if hasattr(mem, "resolve_via_procedure") else None
+    if proc and proc.get("reused"):
+        # Reused a known procedure — knowledge changed (numbers) but reasoning stayed
+        # Return as memory hit with trace in sources for paper story: POST /resolve hits trace in sources[]
+        trace = proc["trace"]
+        # Persist this new-numbers instance as well (so next identical hits exact memory)
+        mem.remember_trace(q, trace, proc["answer"], tier="reasoning-primitives", confidence=0.99)
+        return ResolveResponse(
+            answer=proc["answer"],
+            confidence=0.99,
+            status="memory",
+            tier="procedure",
+            sources=[{"name": f"procedure:{proc['pattern']}", "reliability": 1.0, "trace": trace, "procedure_sig": proc["procedure_sig"]}],
+            disagreement=[],
+            trace=trace,
+        )
     # Per-request connector override: build a scoped router so caller can choose sources
     if req.connectors is not None:
-        mem = get_memory()
         retrievers = build_retrievers(enabled_only=False, include=req.connectors)
         router = TruthRouter(memory=mem, corroborator=Corroborator(), retrievers=retrievers)
     else:
         router = get_router()
     resolution = router.resolve(q)
-    # Attach trace if procedure memory has it
+    # Attach trace if procedure memory has it (or store it now for future reuse)
     trace = None
     if resolution.answer is not None:
-        rec = get_memory().lookup(q)
+        rec = mem.lookup(q)
         if rec and rec.get("trace"):
             trace = rec["trace"]
+        elif proc and proc.get("trace"):
+            # First time for this pattern/numbers — we just computed proc, but it wasn't reused (new pattern)
+            trace = proc["trace"]
+            mem.remember_trace(q, trace, resolution.answer, tier=resolution.tier, confidence=resolution.confidence)
+            # Also surface trace in sources for this cold hit
+            return ResolveResponse(
+                answer=resolution.answer,
+                confidence=resolution.confidence,
+                status=resolution.status,
+                tier=resolution.tier,
+                sources=resolution.sources + [{"name": f"procedure:{proc['pattern']}", "reliability": 1.0, "trace": trace}],
+                disagreement=resolution.disagreement,
+                trace=trace,
+            )
     return ResolveResponse(
         answer=resolution.answer,
         confidence=resolution.confidence,
