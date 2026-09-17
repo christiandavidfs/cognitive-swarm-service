@@ -55,6 +55,27 @@ PROCEDURES_Q = [
     "A cube cut into 125 equal smaller cubes, how many have exactly one face painted?",
     "A rope 90 cm long is cut so one piece is 2 times as long as the other, how long is the shorter piece?",
     "What is the 40th odd positive integer?",
+    # 20 more → 60 total (batch60 style human diverse, new numbers/wordings for 40→60)
+    "In a group of 200 people at a party each pair shakes hands once, how many handshakes?",
+    "Thirty people can build a wall in 10 days how many people are needed to build it in 5 days?",
+    "It takes 10 machines 10 minutes to make 10 widgets, how long for 5 machines to make 5 widgets?",
+    "A car uses 8 liters per 100 km, how many liters for 150 km?",
+    "A snail in a 30-foot well climbs 6 feet each day and slides back 3 feet each night, how many days to top?",
+    "If you have 100 apples and give away 45, how many do you have left?",
+    "A farmer has 50 sheep all but 12 die how many are left?",
+    "Which is larger 7/10 or 3/5?",
+    "Two trains 300 km apart travel toward each other at 60 km/h and 40 km/h, when do they meet?",
+    "Four people need cross bridge 2,3,7,10 minutes what is minimal crossing time?",
+    "Six jars of honey and four jars of jam cost 62 cents. Three jars of honey and four jars of jam cost 44 cents. How much does one jar of honey cost?",
+    "Alice and Bob have a total of 60 apples. Bob gives Alice 10 apples. Now Alice has twice as many as Bob. How many did Alice start with?",
+    "A cube cut into 27 equal smaller cubes, how many have exactly one face painted?",
+    "A rope 200 cm long is cut so one piece is 3 times as long as the other, how long is the shorter piece?",
+    "What comes next in the sequence 20, 30, 42, 56?",
+    "What is the 60th odd positive integer?",
+    "A bat and ball cost $5.50 together, the bat costs $5 more than the ball, how much is the ball?",
+    "You have a 7 liter jug and a 3 liter jug, what exact amount cannot be measured?",
+    "A bag has 10 blue and 5 red balls, what is the probability of drawing a red ball?",
+    "What has keys but no locks, space but no room, you can enter but not go inside? (keyboard variant)",
 ]
 
 def get_token():
