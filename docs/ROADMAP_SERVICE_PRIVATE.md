@@ -84,6 +84,6 @@ python3 scripts/generate_procedures.py  # 20/20 verifiable
 
 ## 5. Private notes (keep in this doc only)
 
-* Warehouse `2b2636d0ca412cdb` Serverless Starter `STOPPED` auto-start `10s` `PENDING→SUCCEEDED`, host `dbc-118c13a0-9998.cloud.databricks.com`, token via `databricks auth token --output json` (`gho_*` not in env). `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_HOST`, `DATABRICKS_TOKEN` (1h TTL) not committed.
-* Catalogs: `dbacademy`, `testing` `ISOLATED` `658fac0b`, `quality_platform` `ae811f5e`, `system`. `testing.testing_schema` private sample, `quality_platform.bronze/silver` private platform.
-* All `curl` from `~` need `python3 /Users/.../scripts/...` (zsh `python` not found before symlink fix `de875eb`).
+* Warehouse `2b2636d0ca412cdb` Serverless Starter `STOPPED` auto-start `10s` `PENDING→SUCCEEDED`, host `dbc-118c13a0-9998.cloud.databricks.com`, token via `databricks auth token --output json` (`gho_*` not in env). `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_HOST`, `DATABRICKS_TOKEN` (1h TTL) not committed. `SERVICE_API_KEY` for `auth.enabled:true` prod (see `config/service.yaml:88`).
+* Catalogs: `dbacademy`, `testing` `ISOLATED` `658fac0b`, `quality_platform` `ae811f5e`, `system`. `testing.testing_schema` private sample (`swarm_knowledge` 7 + `swarm_procedures` 100), `quality_platform.bronze/silver` private platform.
+* All `curl` from `~` need `python3 /Users/.../scripts/...` (zsh `python` not found before symlink fix `de875eb`). With `auth.enabled:true`, add `-H "X-API-Key: $SERVICE_API_KEY"` to `POST /resolve` (exempt `/health` `/docs`).

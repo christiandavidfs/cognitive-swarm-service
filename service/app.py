@@ -26,8 +26,9 @@ CORE_PATH = Path(__file__).parent.parent.parent / "cognitive-swarm"
 if str(CORE_PATH) not in sys.path and CORE_PATH.exists():
     sys.path.insert(0, str(CORE_PATH))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # Core
@@ -55,6 +56,95 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Auth + rate-limit (private, monetizable) ---
+import collections as _collections
+
+_rate_buckets: dict = {}
+_rate_lock = None
+try:
+    import threading as _thr
+    _rate_lock = _thr.Lock()
+except Exception:
+    _rate_lock = None
+
+def _auth_config():
+    cfg_path = Path(__file__).parent.parent / "config" / "service.yaml"
+    try:
+        import yaml
+        data = yaml.safe_load(cfg_path.read_text()) or {}
+        auth = data.get("auth", {}) if isinstance(data, dict) else {}
+        # env expansion for keys
+        import os as _os
+        keys = auth.get("api_keys") or []
+        # handle "${VAR}" single entry
+        expanded = []
+        for k in keys:
+            if isinstance(k, str):
+                ek = _os.path.expandvars(k)
+                if ek and ek != k and "," in ek:
+                    expanded.extend([x.strip() for x in ek.split(",") if x.strip()])
+                elif ek and ek.strip() and ek != "${SERVICE_API_KEY}":
+                    expanded.append(ek.strip())
+                elif k.strip() and not k.strip().startswith("${"):
+                    expanded.append(k.strip())
+        return {
+            "enabled": bool(auth.get("enabled", False)),
+            "keys": set(expanded),
+            "limit": int(auth.get("rate_limit_per_min", 60)),
+            "exempt": set(auth.get("exempt_paths") or ["/health", "/docs", "/openapi.json", "/redoc"]),
+        }
+    except Exception:
+        return {"enabled": False, "keys": set(), "limit": 60, "exempt": {"/health", "/docs", "/openapi.json", "/redoc"}}
+
+@app.middleware("http")
+async def _auth_rate_middleware(request: Request, call_next):
+    cfg = _auth_config()
+    path = request.url.path
+    if cfg["enabled"] and path not in cfg["exempt"]:
+        # API key via X-API-Key or Authorization: Bearer <key>
+        provided = request.headers.get("x-api-key") or ""
+        if not provided:
+            auth_h = request.headers.get("authorization") or ""
+            if auth_h.lower().startswith("bearer "):
+                provided = auth_h[7:].strip()
+        if not provided or (cfg["keys"] and provided not in cfg["keys"]):
+            # if keys configured, require match; if no keys configured, allow any key? For private, require at least one.
+            if cfg["keys"]:
+                return JSONResponse(status_code=401, content={"detail": "Invalid API key. Provide X-API-Key or Authorization: Bearer <key>."})
+        # rate-limit per key (or IP fallback)
+        bucket_key = provided or request.client.host if request.client else "anon"
+        now = time.time()
+        window = 60.0
+        limit = cfg["limit"]
+        # simple sliding window
+        if _rate_lock:
+            with _rate_lock:
+                dq = _rate_buckets.get(bucket_key)
+                if dq is None:
+                    dq = _collections.deque()
+                    _rate_buckets[bucket_key] = dq
+                # purge old
+                while dq and dq[0] <= now - window:
+                    dq.popleft()
+                if len(dq) >= limit:
+                    return JSONResponse(status_code=429, content={"detail": f"Rate limit {limit}/min exceeded", "retry_after": int(dq[0] + window - now) + 1})
+                dq.append(now)
+        else:
+            dq = _rate_buckets.get(bucket_key)
+            if dq is None:
+                dq = _collections.deque()
+                _rate_buckets[bucket_key] = dq
+            while dq and dq[0] <= now - window:
+                dq.popleft()
+            if len(dq) >= limit:
+                return JSONResponse(status_code=429, content={"detail": f"Rate limit {limit}/min exceeded"})
+            dq.append(now)
+    response = await call_next(request)
+    # monetization header
+    if cfg["enabled"]:
+        response.headers["X-RateLimit-Limit"] = str(cfg["limit"])
+    return response
 
 # Single shared memory + router for the hot path (ProcedureStore persists to ./data/verified_memory.json)
 _memory: Optional[ProcedureStore] = None
