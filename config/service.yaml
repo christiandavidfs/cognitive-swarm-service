@@ -79,6 +79,15 @@ models:
     api_key_env: "OPENROUTER_API_KEY"
     strengths: ["general"]
 
+auth:
+  # API key auth for monetization (private service). Disabled for POC local dev.
+  enabled: false
+  # Comma-separated or list: ${SERVICE_API_KEY} or explicit keys. Env expansion supported.
+  api_keys: ["${SERVICE_API_KEY}"]
+  rate_limit_per_min: 60
+  # Paths exempt from auth (health, docs)
+  exempt_paths: ["/health", "/docs", "/openapi.json", "/redoc"]
+
 memory:
   # VerifiedMemory JSON path (persists Tier 0). Procedure store shares it (procedure_sig field).
   # 0.85 reduces false blur on retrieval questions that share tokens (e.g. fall vs cause of fall)
