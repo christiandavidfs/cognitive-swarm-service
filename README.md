@@ -73,6 +73,10 @@ Connectors are modular: `service/connectors/` — add one file + one line in `co
 
 > Nothing public. Monetizable, private is documented in **private** `docs/ROADMAP_SERVICE_PRIVATE.md` (warehouse/host/table names, 20→40→200 plan, 1→2→3 order, 65ms warm + 120/120 + procedure `88` same sig `6d8cef7d`). `swarm_procedures` traces, `testing.*`, `quality_platform` bronze/silver all private.
 
+## Business implementations — monetizable
+
+> 10 private implementations using `POST /resolve` `procedure:trace` + `60/min` key — see **private** `docs/BUSINESS_IMPLEMENTATIONS.md` (investigation IA, test marketplace, fintech, legal, edtech, ops, catalog search, fraud, hiring). Nothing public.
+
 ## Tests & validation
 
 ```bash
