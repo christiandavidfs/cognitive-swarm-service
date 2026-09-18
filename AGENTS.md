@@ -6,7 +6,7 @@
 
 POC that wraps `../cognitive-swarm` (`TruthRouter` Tiers 0-4) into `FastAPI` at `service/app.py:141` — 65ms warm, 0 loads on deterministic tiers. Adds:
 
-* **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `60` traces seeded (`scripts/seed_procedures.py:1` `60/60` verifiable, `testing.testing_schema.swarm_procedures` `60` rows, `46` patterns `184` samples `CV 0.951`).
+* **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `80` traces seeded (`scripts/seed_procedures.py:1` `80/80` verifiable, `testing.testing_schema.swarm_procedures` `80` rows, `46` patterns `184` samples `CV 0.951`, Qwen LoRA `150` iters `val 0.416` `11M`).
 * **Pluggable connectors** `service/connectors/registry.py:29` — `config/service.yaml:37` declares `wikidata 0.8` + `openalex 0.9` + `databricks_sql` live (`testing.swarm_knowledge` 7 rows, `Statement API` `warehouses/2b2636d0ca412cdb` auto-start, token via `databricks auth token`), plus stubs `confluence`/`postgres`/`generic_http` (one file + one YAML line).
 * **Model registry** `service/models/registry.py:1` — `phi`/`qwen` MLX sequential (8GB) + `minimax-m3` API, choosable per-request `POST /resolve {models:[...]}`.
 * **Thinking matrix async** `service/jobs/debate_job.py:22` — not on hot path, verifies via `TruthRouter.verify_candidate` then `remember_trace`.
@@ -38,14 +38,14 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
 
 * **Python**: `python3` (symlinked, `python` also works after `de875eb`), `swarm` venv `../swarm/cognitive-swarm-env/bin/python3` has `sklearn` for `student_router` train; service venv has `fastapi`.
 * **Databricks**: `databricks auth login` `personal` `dbc-118c13a0-9998...`, `warehouses list` `2b2636...` `STOPPED` auto-start `10s`, `scripts/seed_databricks.py --verify` `7` rows.
-* **Scripts**: `scripts/seed_databricks.py --verify` (knowledge) + `--add "Q|A|src|rel|cat"`, `scripts/seed_procedures.py` `20/20`, `scripts/generate_procedures.py` `20/20`, `scripts/distill_to_qwen.py` `CV 0.962` `33/36`.
+* **Scripts**: `scripts/seed_databricks.py --verify` (knowledge 7), `scripts/seed_procedures.py` `80/80` (`60→80` `7140` etc.), `scripts/generate_procedures.py` `80/80`, `scripts/distill_to_qwen.py` `494` entries `17k` tokens `CV 0.962` `Qwen 150 iters val 0.416`.
 * **Thresholds**: `memory 0.85` prevents `fall` vs `cause of fall` blur; `local_docs 0.35` prevents `5 machines` false hit.
 * **Results non-deterministic** for debate only; deterministic tiers reproducible.
 
 ## Open items (turn into tasks)
 
-* Phase 1 `60→80` `batch200` human (was `40→60` done), `60` traces live `46` patterns `CV 0.951`.
-* Phase 2 Qwen LoRA `question→trace` `mlx_lm.lora --iters 150` on `40` traces.
+* Phase 1 `80→100` `batch200` human (was `60→80` done), `80` traces live `46` patterns `CV 0.951` `val 0.416`.
+* Phase 2 Qwen LoRA `question→trace` DONE `150` iters on `80` (`11M` `adapters.safetensors`), next: distill `80` via API `procedure:handshake` vs `qwen_router` bench.
 * Phase 3 Vector Search hybrid for `1000+` docs.
 
 ## Conventions

@@ -76,6 +76,27 @@ PROCEDURES_Q = [
     "You have a 7 liter jug and a 3 liter jug, what exact amount cannot be measured?",
     "A bag has 10 blue and 5 red balls, what is the probability of drawing a red ball?",
     "What has keys but no locks, space but no room, you can enter but not go inside? (keyboard variant)",
+    # 20 more → 80 total (human-diverse, new numbers/wordings, stock+non-stock, all 20/20 verifiable)
+    "How many handshakes if 120 people each shake hands with every other exactly once?",
+    "Eight people can build a wall in 20 days how many people are needed to build it in 8 days?",
+    "It takes 3 machines 7 minutes to make 3 widgets, how long for 9 machines to make 9 widgets?",
+    "A van uses 15 liters per 100 km, how much fuel for 80 km?",
+    "A snail at the bottom of a 18-foot well climbs 3 feet each day and slides back 1 foot each night, how many days to reach the top?",
+    "You have 200 marbles and give away 85, how many do you have left?",
+    "A farmer owns 60 sheep, all but 18 die, how many are left?",
+    "Which is larger 9/14 or 5/8?",
+    "Two trains 500 km apart travel toward each other at 90 km/h and 60 km/h, when do they meet?",
+    "Four people need to cross a bridge at night with a flashlight with times 1, 2, 5, 10 minutes, what is the shortest time?",
+    "Two jars of honey and five jars of jam cost 48 cents. Six jars of honey and five jars of jam cost 72 cents. How much does one jar of honey cost?",
+    "Alice and Bob have a total of 80 apples. Bob gives Alice 8 apples. Now Alice has twice as many as Bob. How many did Alice start with?",
+    "A cube cut into 216 equal smaller cubes, how many have exactly one face painted?",
+    "What comes next in the sequence 30, 42, 56, 72?",
+    "What is the 35th odd positive integer?",
+    "A bat and ball cost $4.10 together, the bat costs $4 more than the ball, how much is the ball?",
+    "How many sides does a circle have if you count its circumference?",
+    "In the biblical story how many animals of each kind did Moses take on the ark?",
+    "How many bricks does it take to complete a building made of bricks?",
+    "You have 20 apples and you take away 8, how many do you have?",
 ]
 
 def get_token():
