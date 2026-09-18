@@ -6,8 +6,8 @@
 
 * Service repo `cognitive-swarm-service` private `https://github.com/christiandavidfs/cognitive-swarm-service` `feat/procedures-40` (next merge to `main`), build mode.
 * Core `cognitive-swarm` private `1972313` + `feat/procedures-40` (give/take fix + `33` templates `40/40`, `46` patterns `184` samples `CV 0.951`).
-* Tiers: `service/app.py:141` L0 `ProcedureStore` `service/memory/procedure_store.py:7` `similarity_threshold 0.85` `config/service.yaml:80` → L1 `procedure` tier on new numbers (same `procedure_sig 6d8cef7d`, TF-IDF `0.26ms`, no load) → L2 deterministic `reasoning_primitives.py`/`student_trace.py` `60/60` verifiable → L3 `Wikidata 0.8` + `OpenAlex 0.9` + **Databricks live** `service/connectors/databricks.py:36` Statement API `warehouses/2b2636d0ca412cdb` Serverless Starter `dbc-118c13a0-9998.cloud.databricks.com`.
-* Databricks: `testing.testing_schema.swarm_knowledge` 7 rows, `testing.testing_schema.swarm_procedures` `60` rows (Delta), `quality_platform` bronze (`api_endpoints` etc.) + silver remain but not queried by default (scoped to `testing.swarm_*`).
+* Tiers: `service/app.py:141` L0 `ProcedureStore` `service/memory/procedure_store.py:7` `similarity_threshold 0.85` `config/service.yaml:80` → L1 `procedure` tier on new numbers (same `procedure_sig 6d8cef7d`, TF-IDF `0.26ms`, no load) → L2 deterministic `reasoning_primitives.py`/`student_trace.py` `80/80` verifiable → L3 `Wikidata 0.8` + `OpenAlex 0.9` + **Databricks live** `service/connectors/databricks.py:36` Statement API `warehouses/2b2636d0ca412cdb` Serverless Starter `dbc-118c13a0-9998.cloud.databricks.com`.
+* Databricks: `testing.testing_schema.swarm_knowledge` 7 rows, `testing.testing_schema.swarm_procedures` `80` rows (494 entries 17k tokens, Qwen 150 iters val 0.416) (Delta), `quality_platform` bronze (`api_endpoints` etc.) + silver remain but not queried by default (scoped to `testing.swarm_*`).
 * Verified: `120/120` via `POST /resolve` `0 loads`, `POST /resolve` new numbers `88` hits `tier: procedure, trace in sources[]`, stock `moses/bear/race` `13` new `46` patterns.
 
 ## 1. Private — nothing public (business)
@@ -60,16 +60,16 @@ python3 scripts/generate_procedures.py  # 20/20 verifiable
 
 ## 3. Phases — 1→2→3 (smartest order)
 
-### Phase 1 — 40→60 procedures + 200-human (5-7d, first, unlocks 2-3)
-* Files: `scripts/generate_procedures.py:20` `40/40` now `33` templates `40/40` `46` patterns `184` `CV 0.951` → next `60→80` add `batch200` human, `scripts/seed_procedures.py:1` `--clear` reseed `testing.swarm_procedures` `40→60`.
-* Acceptance: `POST /resolve` new numbers `tier: procedure` on 3 variants (handshake `88`, stock `moses`, `bear`), `batch200_final.json` `>85%`, Databricks `select count(*) =60` now `40`.
-* Why first: DONE `20→40`, next is `40→60`; fixes `66%→47%` `docs/FINDINGS_STUDENT.md:33` without GPU; 2-3 need fresh verified traces to avoid collapse `THESIS.md:7.5`.
+### Phase 1 — 60→80 procedures + 200-human (5-7d, first, unlocks 2-3)
+* Files: `scripts/generate_procedures.py:20` `80/80` now `33` templates `80/80` `46` patterns `184` `CV 0.951` → next `80→100` add `batch200` human, `scripts/seed_procedures.py:1` `--clear` reseed `testing.swarm_procedures` `80→100`.
+* Acceptance: `POST /resolve` new numbers `tier: procedure` on 3 variants (handshake `88`, stock `moses`, `bear`), `batch200_final.json` `>85%`, Databricks `select count(*) =80` now `80` `494` entries `17k` tokens.
+* Why first: DONE `40→60` → now `60→80` done; fixes `66%→47%` `docs/FINDINGS_STUDENT.md:33` without GPU; 2-3 need fresh verified traces to avoid collapse `THESIS.md:7.5`.
 
 ### Phase 2 — Distill to Qwen question→trace (parallel day 3, 1d train)
-* Files: `scripts/distill_to_qwen.py:1` (TF-IDF `0.26ms` already reuses `40/40`) + `cognitive_swarm/tools/qwen_router.py:50` + `qwen_lora_finetune.py`.
-* Command (M1 8GB, ~12min, 150 iters, peak 0.73GB): `python -m mlx_lm.lora --model mlx-community/Qwen2.5-0.5B-Instruct-4bit --data /tmp/qwen_trace_data --train --batch-size 2 --iters 150 --adapter-path cognitive_swarm/tools/qwen_router_lora --r 8 --alpha 16`
-* Data: JSONL `question→trace→answer` from private `swarm_procedures` `40` + synthetic `184` samples.
-* Acceptance: `CV ≥0.95`, `40/40` now, latency `TF-IDF <1ms` vs `Qwen <500ms`, `DUAL_ROUTER_BENCHMARK.md:1` apples-to-apples.
+* Files: `scripts/distill_to_qwen.py:1` (TF-IDF `0.26ms` already reuses `80/80`) + `cognitive_swarm/tools/qwen_router.py:50` + `qwen_lora_finetune.py`.
+* Command (M1 8GB, ~12min, 150 iters, peak 1.237GB): `python -m mlx_lm.lora --model mlx-community/Qwen2.5-0.5B-Instruct-4bit --data /tmp/qwen_trace_data --train --batch-size 2 --iters 150 --adapter-path cognitive_swarm/tools/qwen_router_lora --r 8 --alpha 16` DONE `150` iters `val 0.416` `train 0.375` `11M` `adapters.safetensors` on `80` dataset.
+* Data: JSONL `question→trace→answer` from private `swarm_procedures` `80` + synthetic `184` samples `494` `17k` tokens.
+* Acceptance: `CV ≥0.95`, `80/80` now, latency `TF-IDF <1ms` vs `Qwen <500ms`, `DUAL_ROUTER_BENCHMARK.md:1` apples-to-apples.
 
 ### Phase 3 — Vector scale (last, 3d)
 * Files: `service/connectors/databricks.py:36` `I LIKE` → Databricks Vector Search `vector_search_indexes` hybrid lexical→reranker, keep `procedure_sig` exact for `65ms warm`.
