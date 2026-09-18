@@ -38,7 +38,7 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
 
 * **Python**: `python3` (symlinked, `python` also works after `de875eb`), `swarm` venv `../swarm/cognitive-swarm-env/bin/python3` has `sklearn` for `student_router` train; service venv has `fastapi`.
 * **Databricks**: `databricks auth login` `personal` `dbc-118c13a0-9998...`, `warehouses list` `2b2636...` `STOPPED` auto-start `10s`, `scripts/seed_databricks.py --verify` `7` rows.
-* **Scripts**: `scripts/seed_databricks.py --verify` (knowledge 7), `scripts/seed_procedures.py` `80/80` (`60→80` `7140` etc.), `scripts/generate_procedures.py` `80/80`, `scripts/distill_to_qwen.py` `494` entries `17k` tokens `CV 0.962` `Qwen 150 iters val 0.416`.
+* **Scripts**: `scripts/seed_databricks.py --verify` (knowledge 7), `scripts/seed_procedures.py` `100/100` (`80→100` `batch200` diverse), `scripts/generate_procedures.py` `100/100`, `scripts/distill_to_qwen.py` `514` entries `18k` tokens `CV 0.962` `Qwen 150 iters val 0.367` `train 0.493` `11M` on `100`.
 * **Thresholds**: `memory 0.85` prevents `fall` vs `cause of fall` blur; `local_docs 0.35` prevents `5 machines` false hit.
 * **Results non-deterministic** for debate only; deterministic tiers reproducible.
 
