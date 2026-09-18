@@ -6,7 +6,7 @@
 
 POC that wraps `../cognitive-swarm` (`TruthRouter` Tiers 0-4) into `FastAPI` at `service/app.py:141` — 65ms warm, 0 loads on deterministic tiers. Adds:
 
-* **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `80` traces seeded (`scripts/seed_procedures.py:1` `80/80` verifiable, `testing.testing_schema.swarm_procedures` `80` rows, `46` patterns `184` samples `CV 0.951`, Qwen LoRA `150` iters `val 0.416` `11M`).
+* **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `100` traces seeded (`scripts/seed_procedures.py:1` `100/100` verifiable, `testing.testing_schema.swarm_procedures` `100` rows `60` new human diverse `batch200` style, `46` patterns `184` samples `CV 0.951`, Qwen LoRA `150` iters `val 0.416` `11M` `494` entries `17k` tokens).
 * **Pluggable connectors** `service/connectors/registry.py:29` — `config/service.yaml:37` declares `wikidata 0.8` + `openalex 0.9` + `databricks_sql` live (`testing.swarm_knowledge` 7 rows, `Statement API` `warehouses/2b2636d0ca412cdb` auto-start, token via `databricks auth token`), plus stubs `confluence`/`postgres`/`generic_http` (one file + one YAML line).
 * **Model registry** `service/models/registry.py:1` — `phi`/`qwen` MLX sequential (8GB) + `minimax-m3` API, choosable per-request `POST /resolve {models:[...]}`.
 * **Thinking matrix async** `service/jobs/debate_job.py:22` — not on hot path, verifies via `TruthRouter.verify_candidate` then `remember_trace`.
@@ -44,8 +44,8 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
 
 ## Open items (turn into tasks)
 
-* Phase 1 `80→100` `batch200` human (was `60→80` done), `80` traces live `46` patterns `CV 0.951` `val 0.416`.
-* Phase 2 Qwen LoRA `question→trace` DONE `150` iters on `80` (`11M` `adapters.safetensors`), next: distill `80` via API `procedure:handshake` vs `qwen_router` bench.
+* Phase 1 `100→120` `batch200` full `200` (was `80→100` done), `100` traces live `46` patterns `CV 0.951` `val 0.416`.
+* Phase 2 Qwen LoRA `question→trace` DONE `150` iters on `80` (`11M`), next: bench `100` via API `procedure:handshake` vs `qwen_router` on `batch200`.
 * Phase 3 Vector Search hybrid for `1000+` docs.
 
 ## Conventions

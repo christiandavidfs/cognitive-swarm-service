@@ -97,6 +97,27 @@ PROCEDURES_Q = [
     "In the biblical story how many animals of each kind did Moses take on the ark?",
     "How many bricks does it take to complete a building made of bricks?",
     "You have 20 apples and you take away 8, how many do you have?",
+    # 20 more → 100 total (batch200 human diverse, edge cases: negative, all_but 57, rope 28x, dogs, doctor, jug 26/21, etc.)
+    "Farmer has 57 sheep, all but 13 die. How many are left?",
+    "You have 13 apples and give away 21 how many left?",
+    "Rope 20 cm cut one piece is 28 times as long as the other how long is shorter?",
+    "12 builders can build a house in 14 days. How many builders needed for 8 days?",
+    "Each dog sees 8 cats how many cats?",
+    "Doctor is Robert's brother but Robert is not doctor's brother how?",
+    "You have 26 liter jug and 21 liter jug what exact amount cannot be measured?",
+    "A snail in a 12-foot pit climbs 3 feet by day and slides 2 feet each night. How many days?",
+    "What is heavier, a kilogram of steel or a kilogram of feathers?",
+    "Which is larger 14/20 or 32/8?",
+    "Two trains 30 km apart travel toward each other at 22 km/h and 9 km/h when meet?",
+    "Rope 7 cm cut one piece is 48 times as long as the other how long is shorter?",
+    "What is the 33th odd positive integer?",
+    "A cube cut into 1000 equal smaller cubes, how many have exactly one face painted?",
+    "What is heavier a pound of feathers or a pound of iron?",
+    "What appears once in a minute twice in a moment and never in a thousand?",
+    "If 5 machines take 5 minutes to make 5 widgets, how long for 100 machines to make 100 widgets?",
+    "You have 5 apples and take away 2 how many do you have?",
+    "How many months have 28 days?",
+    "An electric train is going north at 100 km/h and wind blows east. Which way does smoke blow?",
 ]
 
 def get_token():
