@@ -21,5 +21,8 @@ dev = ["pytest>=7.0", "pytest-asyncio>=0.23", "httpx", "black"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["service"]
+
 [tool.black]
 line-length = 100

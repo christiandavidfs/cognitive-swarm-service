@@ -32,7 +32,7 @@ curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -
 
 ```bash
 # from service repo (build mode, not plan)
-cd /Users/kaizen/repos/cognitive-swarm-service
+cd <service-repo-root>
 # 1. read AGENTS.md (this file) + docs/ROADMAP_SERVICE_PRIVATE.md:3 (phases 1→2→3)
 # 2. pick Phase 1 (20→40) or Phase 2 (Qwen) or Phase 3 (vector)
 # 3. branch: git checkout -b feat/<name>
@@ -59,12 +59,12 @@ if git diff --cached --name-only | grep -qE "service/|cognitive_swarm/"; then
 fi
 HOOK
 chmod +x .git/hooks/pre-commit
-# same for core repo: cp .git/hooks/pre-commit /Users/kaizen/repos/cognitive-swarm/.git/hooks/pre-commit
+# optional core checkout: install the same hook in that repo's .git/hooks/ — path is local to the operator, not committed
 ```
 
 ## 4. Private guard (business — nothing public)
 
-* Private (nothing public, never push): `testing.testing_schema.swarm_knowledge` raw, `swarm_procedures` traces + `procedure_sig`, `quality_platform` bronze/silver, `DATABRICKS_HOST/TOKEN` `warehouse 2b2636...`, `data/verified_memory.json`, `*.pkl`, `procedure:trace` in `POST /resolve sources[]`.
+* Private (nothing public, never push): `testing.testing_schema.swarm_knowledge` raw, `swarm_procedures` traces + `procedure_sig`, `quality_platform` bronze/silver, `DATABRICKS_HOST` / `DATABRICKS_TOKEN` / `DATABRICKS_WAREHOUSE_ID`, `data/verified_memory.json`, `*.pkl`, `procedure:trace` in `POST /resolve sources[]`.
 
 ## 5. Current doc map
 

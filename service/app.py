@@ -15,10 +15,11 @@ Endpoints:
 from __future__ import annotations
 
 import os
+import re
 import time
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterable, List, Optional, Set
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -106,23 +107,9 @@ def _auth_config():
         mtime = cfg_path.stat().st_mtime
         data = yaml.safe_load(cfg_path.read_text()) or {}
         auth = data.get("auth", {}) if isinstance(data, dict) else {}
-        # env expansion for keys
-        import os as _os
-        keys = auth.get("api_keys") or []
-        # handle "${VAR}" single entry
-        expanded = []
-        for k in keys:
-            if isinstance(k, str):
-                ek = _os.path.expandvars(k)
-                if ek and ek != k and "," in ek:
-                    expanded.extend([x.strip() for x in ek.split(",") if x.strip()])
-                elif ek and ek.strip() and ek != "${SERVICE_API_KEY}":
-                    expanded.append(ek.strip())
-                elif k.strip() and not k.strip().startswith("${"):
-                    expanded.append(k.strip())
         return_cfg = {
             "enabled": bool(auth.get("enabled", False)),
-            "keys": set(expanded),
+            "keys": expand_api_keys(auth.get("api_keys") or []),
             "limit": int(auth.get("rate_limit_per_min", 60)),
             "exempt": set(auth.get("exempt_paths") or ["/health", "/docs", "/openapi.json", "/redoc"]),
         }
@@ -135,50 +122,120 @@ def _auth_config():
             return _auth_cache["config"]
         return {"enabled": False, "keys": set(), "limit": 60, "exempt": {"/health", "/docs", "/openapi.json", "/redoc"}}
 
+_ENV_PLACEHOLDER = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|%([A-Za-z_][A-Za-z0-9_]*)%")
+
+
+def expand_api_keys(raw_keys: Optional[Iterable]) -> Set[str]:
+    """Expand env placeholders in configured API keys.
+
+    Unexpanded ``${VAR}`` / ``%VAR%`` is dropped. An enabled auth block with
+    zero keys after expansion must fail closed, not accept any caller.
+    Comma-split only when expansion changed the value (an env list).
+    """
+    found: List[str] = []
+    for raw in raw_keys or []:
+        if not isinstance(raw, str):
+            continue
+        original = raw.strip()
+        if not original:
+            continue
+
+        def _replace(match: re.Match) -> str:
+            name = match.group(1) or match.group(2)
+            return os.environ.get(name, match.group(0))
+
+        expanded = os.path.expandvars(_ENV_PLACEHOLDER.sub(_replace, original))
+        if "${" in expanded or _ENV_PLACEHOLDER.search(expanded):
+            continue
+        expanded = expanded.strip()
+        if not expanded:
+            continue
+        if expanded != original and "," in expanded:
+            found.extend(part.strip() for part in expanded.split(",") if part.strip())
+        else:
+            found.append(expanded)
+    return set(found)
+
+
+def bucket_key(provided: str, client_host: Optional[str]) -> str:
+    """Rate-limit identity. A present key always wins, even if ``client`` is missing.
+
+    The old ``provided or host if client else "anon"`` expression collapsed every
+    request onto one bucket whenever ``request.client`` was None.
+    """
+    if provided:
+        return provided
+    if client_host:
+        return client_host
+    return "anon"
+
+
+def auth_decision(enabled: bool, keys: Set[str], provided: str, exempt: bool) -> int:
+    """200 to continue, 401 to reject. Disabled and exempt paths never look at keys.
+
+    Enabled with an empty key set is a misconfiguration: reject everyone, including
+    callers who sent a key. Otherwise require an exact match.
+    """
+    if not enabled or exempt:
+        return 200
+    if not keys or provided not in keys:
+        return 401
+    return 200
+
+
+def _provided_api_key(headers) -> str:
+    provided = (headers.get("x-api-key") or "").strip()
+    if provided:
+        return provided
+    auth_h = headers.get("authorization") or ""
+    if auth_h.lower().startswith("bearer "):
+        return auth_h[7:].strip()
+    return ""
+
+
 @app.middleware("http")
 async def _auth_rate_middleware(request: Request, call_next):
     cfg = _auth_config()
     path = request.url.path
-    if cfg["enabled"] and path not in cfg["exempt"]:
-        # API key via X-API-Key or Authorization: Bearer <key>
-        provided = request.headers.get("x-api-key") or ""
-        if not provided:
-            auth_h = request.headers.get("authorization") or ""
-            if auth_h.lower().startswith("bearer "):
-                provided = auth_h[7:].strip()
-        if not provided or (cfg["keys"] and provided not in cfg["keys"]):
-            # if keys configured, require match; if no keys configured, allow any key? For private, require at least one.
-            if cfg["keys"]:
-                return JSONResponse(status_code=401, content={"detail": "Invalid API key. Provide X-API-Key or Authorization: Bearer <key>."})
-        # rate-limit per key (or IP fallback)
-        bucket_key = provided or request.client.host if request.client else "anon"
+    exempt = path in cfg["exempt"]
+    provided = _provided_api_key(request.headers)
+    if auth_decision(cfg["enabled"], cfg["keys"], provided, exempt) == 401:
+        detail = (
+            "Auth enabled but no API keys configured."
+            if not cfg["keys"]
+            else "Invalid API key. Provide X-API-Key or Authorization: Bearer <key>."
+        )
+        return JSONResponse(status_code=401, content={"detail": detail})
+    if cfg["enabled"] and not exempt:
+        # rate-limit per key (or IP fallback) — only after a key was accepted
+        bkey = bucket_key(provided, request.client.host if request.client else None)
         now = time.time()
         window = 60.0
         limit = cfg["limit"]
         # simple sliding window
         if _rate_lock:
             with _rate_lock:
-                dq = _rate_buckets.get(bucket_key)
+                dq = _rate_buckets.get(bkey)
                 if dq is None:
                     dq = _collections.deque()
-                    _rate_buckets[bucket_key] = dq
+                    _rate_buckets[bkey] = dq
                 # purge old
                 while dq and dq[0] <= now - window:
                     dq.popleft()
                 if not dq and len(_rate_buckets) > _MAX_RATE_BUCKETS:
                     _sweep_rate_buckets(now, window)
-                    dq = _rate_buckets.get(bucket_key)
+                    dq = _rate_buckets.get(bkey)
                     if dq is None:
                         dq = _collections.deque()
-                        _rate_buckets[bucket_key] = dq
+                        _rate_buckets[bkey] = dq
                 if len(dq) >= limit:
                     return JSONResponse(status_code=429, content={"detail": f"Rate limit {limit}/min exceeded", "retry_after": int(dq[0] + window - now) + 1})
                 dq.append(now)
         else:
-            dq = _rate_buckets.get(bucket_key)
+            dq = _rate_buckets.get(bkey)
             if dq is None:
                 dq = _collections.deque()
-                _rate_buckets[bucket_key] = dq
+                _rate_buckets[bkey] = dq
             while dq and dq[0] <= now - window:
                 dq.popleft()
             if len(dq) >= limit:
