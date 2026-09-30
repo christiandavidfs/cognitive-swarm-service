@@ -36,6 +36,13 @@
 * **Verdict**: Kev keeps the judge seat; OpenDecider relegated to cheap bulk pre-screen (20× faster, worse calibration — err 0.095 unfit for auto-routing). Vendor claim (OD > Jev) does not transfer to our tasks.
 * **Method lesson**: `--judge` harness accepts any future candidate with zero new code. Measure, don't trust.
 
+## 2026-09-30 · Fine-tune loop closed (AG News, unseen `test[1000:1200]`, n=200)
+
+* Base Kev-0.8B: acc **0.855**, Brier **0.230**, auto@0.9 132/200 err=0.061
+* Fine-tuned (800 rows, 2 epochs, lr 2e-5, 13.5min on RTX 3060): acc **0.880** (+2.5pts), Brier **0.204**, auto@0.9 173/200 err=0.087
+* Reading: accuracy AND Brier improve, but automation error worsens (0.061→0.087) — temperature unfitted (1.00 vs base 2.35), i.e. overconfident. The recipe's prescribed next step (fit temperature on heldout) directly addresses it.
+* **Verdict**: MIXED — promote accuracy, fail calibration gate. No promotion until temperature refit. First complete learn→train→measure loop: the machinery works end to end.
+
 ## Open gates (one closed 2026-09-30)
 
 * ~~Escalation-decay curve on live traffic~~ MEASURED (`scripts/pilot_pokeapi.py`, 30 Pokémon × 2 Qs × 2 rounds vs API truth): **round1 acc 60/60 memory_hits 0/60 @0.16s → round2 acc 60/60 memory_hits 60/60 @0.00s**. First direct learning-curve evidence: retrieval cost → 0 on repeat.

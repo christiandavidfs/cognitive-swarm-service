@@ -40,6 +40,8 @@ QUESTION = {
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=200)
+    ap.add_argument("--offset", type=int, default=0,
+                    help="slice start (use offset>=train size to avoid train contamination)")
     ap.add_argument("--save", default="data/agnews_kev.jsonl")
     ap.add_argument("--judge", default="kev", choices=["kev", "opendecider"],
                     help="kev = SystemOne HTTP (KEV_BASE_URL); opendecider = local pip model")
@@ -70,7 +72,7 @@ def main():
         tag = "kev"
 
     from datasets import load_dataset
-    ds = load_dataset("fancyzhx/ag_news", split=f"test[:{args.n}]")
+    ds = load_dataset("fancyzhx/ag_news", split=f"test[{args.offset}:{args.offset + args.n}]")
 
     correct = brier = auto_ok = auto_n = 0
     rows = []
