@@ -18,9 +18,7 @@ import time
 import logging
 from typing import List, Optional, Sequence, Dict
 
-from cognitive_swarm.orchestration.corroboration import SourceClaim
-from cognitive_swarm.orchestration.prompt_optimizer import TaskType
-from .base import Connector
+from .base import Connector, SourceClaim, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +37,8 @@ class PostgresRetriever(Connector):
         cache_ttl_s: int = 60,
     ):
         self.dsn = dsn or os.getenv("POSTGRES_DSN") or ""
+        if self.dsn.startswith("${"):
+            self.dsn = ""  # unexpanded placeholder (var unset) -> disabled
         self.reliability = float(reliability)
         self.query = query or query_template
         self.timeout_s = int(timeout_s)

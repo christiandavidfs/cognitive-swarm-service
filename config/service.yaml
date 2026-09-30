@@ -7,7 +7,14 @@ service:
   # cors origins, log level, etc.
   log_level: "info"
 
-# Default Tier 3 connectors (category-gated per Retriever.categories).
+# Resolver backends — optional deterministic solvers, tried in order.
+# Each name loads service/backends/<name>.py; missing backends are skipped
+# (memory + retrieval still serve). Override via BACKENDS env (comma-separated).
+#   cognitive_swarm: pip install <path-or-package> providing `cognitive_swarm`
+backends:
+  - cognitive_swarm
+
+# Default Tier 3 connectors (category-gated per Connector.categories).
 # enabled:false stays registered but not queried unless caller asks for it explicitly.
 connectors:
   # L3 factual / contested — reliability = authority weight used by Corroborator
@@ -25,7 +32,7 @@ connectors:
   local_docs:
     enabled: true
     reliability: 0.8
-    source_dir: "../cognitive-swarm/retrieval_corpus"
+    source_dir: "${LOCAL_DOCS_DIR}"
     match_threshold: 0.35
     chunk_size: 3
   # Stubs — modular, scalable; fill credentials via env, flip enabled:true
@@ -37,9 +44,9 @@ connectors:
   databricks_sql:
     enabled: true
     reliability: 1.0
-    warehouse_id: "2b2636d0ca412cdb"
-    host: "https://dbc-118c13a0-9998.cloud.databricks.com"
-    query_template: "SELECT answer, source, reliability FROM testing.testing_schema.swarm_knowledge WHERE question ILIKE '%{question}%' LIMIT 5"
+    warehouse_id: "${DATABRICKS_WAREHOUSE_ID}"
+    host: "${DATABRICKS_HOST}"
+    query_template: "SELECT answer, source, reliability FROM ${DATABRICKS_KNOWLEDGE_TABLE} WHERE question ILIKE '%{question}%' LIMIT 5"
     timeout_s: 12
   postgres:
     enabled: false

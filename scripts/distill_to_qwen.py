@@ -8,10 +8,17 @@ variants to demo trace reuse on new numbers without model load (procedure memory
 and the Qwen training command for full seq2seq.
 """
 import sys
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm")
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm-service")
-from cognitive_swarm.tools.student_router import TRAINING_DATA, train as train_tfidf
-from cognitive_swarm.tools.student_trace import generate_trace
+from pathlib import Path as _P
+_REPO = _P(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+try:
+    from cognitive_swarm.tools.student_router import TRAINING_DATA, train as train_tfidf
+    from cognitive_swarm.tools.student_trace import generate_trace
+except ImportError:
+    raise SystemExit("This script needs the optional cognitive-swarm backend package: "
+                     "pip install <path-to-cognitive-swarm> (see README).")
+
 
 # 1. TF-IDF distill (already 33 patterns, 297 samples)
 print("== TF-IDF student (247KB, 0.26ms) ==")

@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """Seed 20 procedure traces into Databricks + local ProcedureStore (cold then second-pass hits)."""
 import sys
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm")
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm-service")
+from pathlib import Path as _Path
+REPO = _Path(__file__).resolve().parent.parent
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 import subprocess, json, requests, time, pathlib, os
-from cognitive_swarm.tools.reasoning_primitives import detect_reasoning_pattern, resolve_reasoning_primitive
-from cognitive_swarm.tools.student_trace import generate_trace, verify_trace
+try:
+    from cognitive_swarm.tools.reasoning_primitives import detect_reasoning_pattern, resolve_reasoning_primitive
+    from cognitive_swarm.tools.student_trace import generate_trace, verify_trace
+except ImportError:
+    raise SystemExit("This script needs the optional cognitive-swarm backend package: "
+                     "pip install <path-to-cognitive-swarm> (see README).")
 
-HOST = "https://dbc-118c13a0-9998.cloud.databricks.com"
-WAREHOUSE = "2b2636d0ca412cdb"
-KNOWLEDGE_TABLE = "testing.testing_schema.swarm_knowledge"
-PROC_TABLE = "testing.testing_schema.swarm_procedures"
+HOST = os.getenv("DATABRICKS_HOST", "")
+WAREHOUSE = os.getenv("DATABRICKS_WAREHOUSE_ID", "")
+KNOWLEDGE_TABLE = os.getenv("DATABRICKS_KNOWLEDGE_TABLE", "testing.testing_schema.swarm_knowledge")
+PROC_TABLE = os.getenv("DATABRICKS_PROCEDURES_TABLE", "testing.testing_schema.swarm_procedures")
 
 PROCEDURES_Q = [
     "In a group of 100 people each shakes hands with every other exactly once how many handshakes?",
@@ -186,8 +192,8 @@ for row in j["result"]["data_array"]:
 # 3. Seed local ProcedureStore
 from service.memory.procedure_store import ProcedureStore
 from pathlib import Path
-# Prod path
-prod_path = Path("/Users/kaizen/repos/cognitive-swarm-service/data/verified_memory.json")
+# Prod path: MEMORY_PATH env wins, else repo-local data/ (no absolute user paths)
+prod_path = Path(os.getenv("MEMORY_PATH", str(_Path(__file__).resolve().parent.parent / "data" / "verified_memory.json")))
 # Also ensure fresh for demo: we insert into prod
 store = ProcedureStore(path=prod_path, similarity_threshold=0.85)
 # For local demo we insert each as memory entry with trace

@@ -7,8 +7,12 @@
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e .                    # service
-pip install -e ../cognitive-swarm  # core (or add to PYTHONPATH)
+pip install -e .                    # service only — no sibling repos needed
+
+# Optional: enable the deterministic cognitive-swarm backend (Tiers 0-2).
+# Without it the service still serves memory + retrieval.
+# pip install -e <path-to-cognitive-swarm>   # provides `cognitive_swarm`
+# BACKENDS=cognitive_swarm uvicorn service.app:app --reload --port 8000
 
 # run API (port 8000, hot path 65ms warm when L0/L2 hits, 0 model loads)
 uvicorn service.app:app --reload --port 8000
@@ -80,11 +84,9 @@ Connectors are modular: `service/connectors/` — add one file + one line in `co
 ## Tests & validation
 
 ```bash
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH pytest -q  # 8/8, includes live Databricks
-# 120/120 deterministic via service (0 loads, even with Databricks enabled)
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -c "from cognitive_swarm.evaluation.leveled_benchmark import LEVELED_PROBLEMS, check_answer; ...; print(f'{ok}/120')"
-# 20→20 procedure demo (new numbers, same reasoning, trace in sources[])
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 scripts/generate_procedures.py  # 20/20
+pytest -q  # standalone, no network, no models
+# With the optional backend installed: BACKENDS=cognitive_swarm pytest -q
+```
 python3 scripts/seed_procedures.py  # Databricks 20 + local 27, verifiable
 python3 scripts/distill_to_qwen.py  # TF-IDF CV 0.962 + Qwen LoRA command
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -d '{"question":"In a group of 88 people each shakes hands with every other exactly once how many handshakes?"}' | python3 -m json.tool # -> 3828 tier: procedure

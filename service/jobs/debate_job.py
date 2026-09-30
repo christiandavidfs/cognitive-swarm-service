@@ -1,9 +1,9 @@
 """Debate jobs — async thinking matrix, results archived as procedure memory.
 
-POC is in-process (no Redis). `POST /jobs/debate` enqueues, a background thread runs
-the cross-critique debate via the core `emergent_debate` / `optimized_debate`, verifies
-any candidate via `TruthRouter.verify_candidate`, and archives verified traces to
-ProcedureStore. The hot path `/resolve` never blocks on this.
+In-process POC (no Redis). `POST /jobs/debate` enqueues; a background thread
+tries deterministic backends first (no model load), falls back to configured
+models, and archives verified candidates to the service memory store. The hot
+path `/resolve` never blocks on this. No external imports.
 """
 from __future__ import annotations
 
@@ -11,12 +11,15 @@ import uuid
 import time
 import threading
 import logging
+from pathlib import Path
 from typing import Dict, List, Optional
+import os
 
 logger = logging.getLogger(__name__)
 
 _JOBS: Dict[str, dict] = {}
 _LOCK = threading.Lock()
+
 
 def create_job(question: str, models: Optional[List[str]] = None) -> str:
     job_id = uuid.uuid4().hex[:12]
@@ -31,18 +34,28 @@ def create_job(question: str, models: Optional[List[str]] = None) -> str:
     }
     with _LOCK:
         _JOBS[job_id] = job
-    # run in background
     t = threading.Thread(target=_run_job, args=(job_id,), daemon=True)
     t.start()
     return job_id
+
 
 def get_job(job_id: str) -> Optional[dict]:
     with _LOCK:
         return dict(_JOBS.get(job_id) or {})
 
+
 def list_jobs() -> List[dict]:
     with _LOCK:
         return [dict(v) for v in _JOBS.values()]
+
+
+def _service_memory():
+    from service.memory.store import ProcedureStore
+
+    p = os.getenv("MEMORY_PATH")
+    path = Path(p) if p else Path(__file__).parent.parent.parent / "data" / "verified_memory.json"
+    return ProcedureStore(path=path)
+
 
 def _run_job(job_id: str):
     with _LOCK:
@@ -53,32 +66,18 @@ def _run_job(job_id: str):
     q = job["question"]
     models = job["models"]
     try:
-        # Try core debate if available; fallback to simple single-model stub that still archives.
         result = _run_debate(q, models)
-        # Archive any verified candidate to procedure memory
         try:
-            from service.memory.procedure_store import ProcedureStore
-            from cognitive_swarm.tools.student_trace import generate_trace, verify_trace
-            from cognitive_swarm.orchestration.truth_router import TruthRouter
-            store = ProcedureStore()
-            router = TruthRouter(memory=store)
-            # verify + remember
+            from service.router import Router
+            from service.backends import load_backends
+
+            mem = _service_memory()
+            router = Router(memory=mem, backends=load_backends(memory=mem))
             for cand in result.get("candidates", []):
                 if router.verify_candidate(q, cand):
-                    trace = generate_trace(q, "debate", {}, cand)
-                    if verify_trace(trace):
-                        store.remember_trace(q, trace, cand, tier="debate", confidence=0.7)
-                        break
-                # also try direct resolver trace
-                from cognitive_swarm.tools.reasoning_primitives import detect_reasoning_pattern, resolve_reasoning_primitive
-                det = detect_reasoning_pattern(q)
-                if det:
-                    pat, args = det
-                    ans = resolve_reasoning_primitive(q)
-                    if ans:
-                        trace = generate_trace(q, pat, args, ans)
-                        store.remember_trace(q, trace, ans, tier="reasoning-primitives")
-                        break
+                    mem.remember_trace(q, f"debate -> {cand} (verified)", cand,
+                                       tier="debate", confidence=0.7)
+                    break
         except Exception as e:
             logger.debug("Archive to procedure store failed: %s", e)
         with _LOCK:
@@ -90,35 +89,29 @@ def _run_job(job_id: str):
             job["status"] = "failed"
             job["error"] = str(e)
 
+
 def _run_debate(question: str, models: List[str]) -> dict:
-    # Prefer core emergent debate if importable (needs mlx); otherwise cheap stub.
     try:
-        # Lazy import so service runs without mlx in CI/tests
-        from cognitive_swarm.orchestration.truth_router import TruthRouter
-        from service.memory.procedure_store import ProcedureStore
-        router = TruthRouter(memory=ProcedureStore())
-        # If question is deterministically solvable, reuse resolver directly (fast, no model load)
-        from cognitive_swarm.tools.reasoning_primitives import resolve_reasoning_primitive
-        from cognitive_swarm.tools.math_primitives import resolve_math_primitive, resolve_compound_expression
-        from cognitive_swarm.tools.string_primitives import resolve_string_primitive
-        from cognitive_swarm.tools.executor import execute as exec_code
-        for fn in [exec_code, resolve_string_primitive, resolve_reasoning_primitive, resolve_compound_expression, resolve_math_primitive]:
+        from service.router import Router
+        from service.backends import load_backends
+
+        mem = _service_memory()
+        router = Router(memory=mem, backends=load_backends(memory=mem))
+        for backend in router.backends:
             try:
-                ans = fn(question)
-                if ans is not None:
-                    return {"candidates": [ans], "verdict": ans, "source": "deterministic (no model load)"}
+                ans = backend.solve(question)
             except Exception:
                 continue
-        # Fall back to model generation if mlx available and models specified
+            if ans is not None and ans.answer is not None:
+                return {"candidates": [ans.answer], "verdict": ans.answer,
+                        "source": f"deterministic backend {backend.name} (no model load)"}
         if models:
             from service.models.registry import generate_with_model as gen
             cands = []
             for m in models[:2]:
                 try:
-                    # Tight prompt like core PromptOptimizer does
                     prompt = f"Answer only the final value.\nQuestion: {question}\nANSWER:"
                     out = gen(m, prompt, max_tokens=16, temperature=0.7)
-                    # crude extract: first line, strip
                     cand = out.strip().split("\n")[0].strip().split()[-1] if out.strip() else ""
                     if cand:
                         cands.append(cand.strip(".,:"))
@@ -126,6 +119,6 @@ def _run_debate(question: str, models: List[str]) -> dict:
                     logger.debug("Model %s generate failed: %s", m, e)
             if cands:
                 return {"candidates": cands, "verdict": cands[0], "source": f"models {models}"}
-        return {"candidates": [], "verdict": None, "source": "no deterministic resolver + no model"}
+        return {"candidates": [], "verdict": None, "source": "no deterministic backend + no model"}
     except Exception as e:
         return {"candidates": [], "verdict": None, "source": f"error: {e}"}
