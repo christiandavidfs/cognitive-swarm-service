@@ -12,7 +12,7 @@ POC that exposes a truth hierarchy as `FastAPI` — fully standalone. Contracts 
 * **First-ingestion ritual** `scripts/ingest_corpus.py` — indexes a corpus dir, reports files/chunks/probe HIT-MISS vs threshold. Kills the *knowledge* cold start day one (procedure cold start remains: curiosity/network).
 * **Model registry** `service/models/registry.py` — `phi`/`qwen` MLX (lazy, optional) + `minimax-m3` API, choosable per-request.
 * **Thinking matrix async** `service/jobs/debate_job.py` — not on hot path, verifies via backends then `remember_trace`.
-* **Hardened API** `service/app.py` — Auth (`X-API-Key`/`Bearer`, exempt `/health /docs`) + rate-limit 60/min per key (`429` + `Retry-After`, bounded buckets, cached YAML config), `auth.enabled:false` for POC. When enabled, an empty key set fails closed (401), including callers who sent a key. Rate-limit identity prefers the API key over the client host. CORS `*` with `allow_credentials=False`.
+* **Hardened API** `service/app.py` + `service/http_guard.py` (fase 3 del plan de remediación: middleware extraído, app.py 464→287 líneas) — Auth (`X-API-Key`/`Bearer`, exempt `/health /docs`) + rate-limit 60/min per key (`429` + `Retry-After`, bounded buckets, cached YAML config), `auth.enabled:false` for POC. When enabled, an empty key set fails closed (401), including callers who sent a key. Rate-limit identity prefers the API key over the client host. CORS `*` with `allow_credentials=False`.
 
 ## Thesis (decided, do not relitigate without measurements)
 
@@ -47,7 +47,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 ## State / how to resume
 
-* **Branch**: `main` @ `0cb8cfd` + active branch `feat/remediation-phase-0-auth` (`decd100`: Fase 0 auth fail-closed + Fase 1 regression tests of `plan/remediacion-hallazgos.md`, pending merge). Next work → merge it, then new `feat/*` branch.
+* **Branch**: `feat/remediation-phase-0-auth` — `decd100` (Fase 0 auth fail-closed + Fase 1 tests) → `3964d20` (auditoría docs) → Fase 2 claims fechados + Fase 3 middleware extraído (56/56 tests, sin editar assertions). Pending merge a `main` (@ `0cb8cfd`). Next work → merge it, then new `feat/*` branch.
 * **Tests**: `BACKENDS=__none__ python -m pytest -q` → **56 passed** locally on 2026-09-30 (prior suite 38 + 18 in `tests/test_auth_ratelimit.py`). The auth suite covers fail-closed keys, bucket identity, public-surface leak guards, and LICENSE presence. With core installed: `BACKENDS=cognitive_swarm`.
 * **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam), curiosidad DONE, recencia DONE, familias emergentes DONE (tipos degradados a priors). Next: Kev fine-tune on own labels (needs dataset ≥400) → pilot.
 * **Pending measurements**: paraphrase gap MEASURED 2026-09-30 (`scripts/bench_paraphrase.py`): regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1 miss, adds 1 silent wrong). GATE SAYS NO — distillation deferred. Kev-0.8B local (RTX 3060 6GB, KEV_CUDA_GRAPHS=0, :8019) Juicio 1 MEASURED (`scripts/measure_jev_classify.py`): 0/12 vs our taxonomy — lumps story+numbers into math (conf tracks difficulty). VERDICT: no extend zero-shot on OUR taxonomy. **AG News pilot MEASURED (`scripts/pilot_agnews.py`, n=200, free labels): Kev-0.8B zero-shot accuracy 0.900, Brier 0.176, automated@conf≥0.9 146/200 err=0.062** (author yardstick 5% budget — just above). Local judges WORK on natural routing tasks; fine-tune JSONL regenerable via the script. Remaining: escalation-decay curve on live traffic.

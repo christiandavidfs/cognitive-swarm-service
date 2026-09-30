@@ -50,8 +50,8 @@ Fuente única de verdad: `plan/remediacion-hallazgos.md`. Estado al cerrar esta 
 |------|-----------|--------|
 | 0 — Fail-closed + purga | auth, fugas, LICENSE | ✅ HECHA (`decd100`) |
 | 1 — Tests de regresión | `tests/test_auth_ratelimit.py` | ✅ HECHA (mismo commit) |
-| 2 — Verdad documental | README/AGENTS drift + claims fechados | 🟡 Parcial: drift reparado en esta auditoría; falta barrido final de claims (`rg` de `120/120`/`65ms` en README ya con caveat) |
-| 3 — Extraer middleware | `app.py` → `http_guard.py` (move puro) | ⬜ Pendiente |
+| 2 — Verdad documental | README/AGENTS drift + claims fechados | ✅ HECHA (drift en auditoría + claims con caveat/fecha) |
+| 3 — Extraer middleware | `app.py` → `http_guard.py` (move puro) | ✅ HECHA (factory + re-exports; 56/56 sin editar tests; app.py 464→287) |
 | 4 — Tesis reproducible | Camino A (backend `local_primitives`) o B (honesto) — decisión del autor | ⬜ Pendiente |
 | 5 — Pesos como priors + CLI token opt-in | comentarios + flag `DATABRICKS_ALLOW_CLI_TOKEN` | ⬜ Pendiente |
 | 6 — Persistencia | gated por medición (freeze) | ⛔ No empezar |

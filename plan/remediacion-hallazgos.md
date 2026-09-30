@@ -1,6 +1,6 @@
 # Plan: cerrar hallazgos de la evaluación
 
-> **Estado (2026-09-30):** Fase 0 + Fase 1 HECHAS en `feat/remediation-phase-0-auth` (`decd100`: auth fail-closed, bucket key, purge de fugas, LICENSE, `tests/test_auth_ratelimit.py`). Parte documental de la Fase 2 ejecutada en la auditoría de docs de ese día (`plan/auditoria-docs-2026-09-30.md`): README (diagrama retirado + ref rota), AGENTS.md (`curiosity.py`, recencia, branch), WORKFLOW.md reescrito a standalone, ROADMAP con state update. Pendiente: Fase 2 claims fechados (revisar restos), Fase 3–6.
+> **Estado (2026-09-30):** Fase 0 + Fase 1 HECHAS en `feat/remediation-phase-0-auth` (`decd100`: auth fail-closed, bucket key, purge de fugas, LICENSE, `tests/test_auth_ratelimit.py`). Fase 2 HECHA: drift documental cerrado en la auditoría (`plan/auditoria-docs-2026-09-30.md`) + claims fechados/caveats en README. Fase 3 HECHA: middleware extraído a `service/http_guard.py` (move puro, 56/56 tests sin editar assertions, `app.py` 464→287 líneas). Pendiente: Fase 4 (decisión de producto A/B), Fase 5, Fase 6 (gated).
 >
 > **Fuente:** `cognitive-swarm-service-evaluacion.md` (re-evaluación 2026-09-30, `HEAD` `0cb8cfd`).
 > **Tipo:** plan de remediación. No implementa. No añade capa cognitiva.

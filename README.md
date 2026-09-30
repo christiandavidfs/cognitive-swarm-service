@@ -48,7 +48,7 @@ curl http://localhost:8000/health
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
   -d '{"question":"What does print(2+3) output?"}'
 
-# factual via Tier 3 — now live on Databricks + Wikidata + LocalDocs, corroborated with provenance
+# factual via Tier 3 — corroborated with provenance (Databricks requires its env; see section below)
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
   -d '{"question":"When did the Western Roman Empire fall?"}'  # -> 476 CE, sources: local-docs + databricks:testing.swarm_knowledge:1
 
