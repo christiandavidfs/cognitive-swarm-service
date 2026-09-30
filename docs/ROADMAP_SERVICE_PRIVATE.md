@@ -2,7 +2,18 @@
 
 > Private doc. Contains warehouse/host/table names and monetization notes. Nothing public. Do not publish as-is.
 
-## 0. Current state (2026-09-18, feat/procedures-40)
+## State update (2026-09-30)
+
+* **Standalone decision**: repos never depend on each other. The `CORE_PATH` hack, `../cognitive-swarm` paths and Docker context `..` are retired. `cognitive_swarm` is an optional package (pip / PYTHONPATH); the service runs without it (memory + retrieval still serve).
+* **Fase 1 de este roadmap (procedures 80→100) DONE**: `feat/procedures-100` merged (`batch200` human diverse, 100/100 verifiable).
+* **Fase 2 (Qwen distill) DEFERRED**: paraphrase gate measured 2026-09-30 (`scripts/bench_paraphrase.py`) — regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1, adds 1 silent wrong). Gate says NO. Do not reopen without a new measurement.
+* **Fase 3 (vector scale) NOT STARTED** — needs 1000+ docs to be justified.
+* Architecture phases (separate numbering, see `docs/ARCHITECTURE_JUDGMENTS.md` §8): memoria DONE, judgments seam DONE, curiosidad DONE (op1–2), recencia DONE (peso), familias DONE (priors).
+* Branch: `main` @ `0cb8cfd`; active `feat/remediation-phase-0-auth` (`decd100`) closes auth fail-closed + leak purge + regression tests (fases 0–1 of `plan/remediacion-hallazgos.md`).
+* Tests: `BACKENDS=__none__ python -m pytest -q` → 56 passed (2026-09-30).
+* Kev-0.8B local judge measurements: Juicio-1 zero-shot on our taxonomy 0/12 (no extend); AG News pilot n=200: acc 0.900, Brier 0.176 (`scripts/pilot_agnews.py`). Remaining open item: escalation-decay curve on live traffic.
+
+## 0. Current state (2026-09-18, feat/procedures-40) — HISTORICAL
 
 * Service repo `cognitive-swarm-service` private `https://github.com/christiandavidfs/cognitive-swarm-service` `feat/procedures-40` (next merge to `main`), build mode.
 * Core `cognitive-swarm` private `1972313` + `feat/procedures-40` (give/take fix + `33` templates `40/40`, `46` patterns `184` samples `CV 0.951`).
@@ -26,12 +37,13 @@ Monetize options (undecided, IA for investigation / market, all private):
 ## 2. Reproducible quickstart (copy-paste)
 
 ```bash
-# 0. env (macOS: python → python3 already symlinked)
+# 0. env (macOS: python → python3 already symlinked). Core opcional: NUNCA paths ../ —
+#    el paquete `cognitive_swarm` se instala desde SU checkout local o donde esté:
 cd <service-repo-root>
 python3 -m venv .venv 2>&1 | tail -1; source .venv/bin/activate 2>&1 | head -1
 pip install -e . 2>&1 | tail -1
-pip install -e ../cognitive-swarm 2>&1 | tail -1
-# or: PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -m pytest -q  # 8/8
+# opcional, solo si el backend determinista se quiere local:
+# pip install -e <ruta-local-del-checkout-del-core>   # provee `cognitive_swarm`; nunca ../
 
 # 1. Databricks seed (needs `databricks auth login` personal, warehouse auto-start)
 python3 scripts/seed_databricks.py --verify          # swarm_knowledge 7 + procedures 1
@@ -48,10 +60,10 @@ curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -d '{"question":"What caused the fall of the Roman Empire?"}' | python3 -m json.tool
 # -> null + disagreement: economic decline vs barbarian invasions vs 395 CE
 
-# 4. Validation
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -m pytest tests/test_api_resolve.py -q  # 8/8
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -c "from cognitive_swarm.evaluation.leveled_benchmark import LEVELED_PROBLEMS, check_answer; from fastapi.testclient import TestClient; import service.app as am; am._memory=None; c=TestClient(am.app); print(sum(1 for p in LEVELED_PROBLEMS if check_answer(c.post('/resolve', json={'question': p['q']}).json().get('answer'), p['a'])), '/120')"
-# -> 120/120 even with Databricks enabled
+# 4. Validation (hermético, sin core ni red)
+BACKENDS=__none__ python3 -m pytest -q   # 56 passed (2026-09-30)
+# 120/120 por POST /resolve es medición de laboratorio: requiere el paquete core
+# opcional instalado (pip, nunca ../) + BACKENDS=cognitive_swarm. No es resultado de CI.
 
 # 5. TF-IDF + Qwen distill view
 python3 scripts/distill_to_qwen.py  # CV 0.962, 33/36 routing, 20/20 novel, Qwen LoRA command

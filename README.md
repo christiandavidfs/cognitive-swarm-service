@@ -39,7 +39,8 @@ The `.[dev]` extra installs the runtime packages (`fastapi`, `uvicorn`, `pydanti
 # pip install -e <path-to-cognitive-swarm>   # provides `cognitive_swarm`
 # BACKENDS=cognitive_swarm uvicorn service.app:app --reload --port 8000
 
-# run API (port 8000, hot path 65ms warm when L0/L2 hits, 0 model loads)
+# run API (port 8000; 0 model loads on deterministic tiers — "65ms warm" is a dated lab
+#   measurement from before the standalone split, not reproduced by CI; see README §Private roadmap)
 uvicorn service.app:app --reload --port 8000
 
 # health + single resolve
@@ -73,14 +74,18 @@ Optional Tier 3 source. Host, warehouse id, and token come from the environment 
 
 Query template (the question is escaped): `SELECT answer, source, reliability FROM ${DATABRICKS_KNOWLEDGE_TABLE} WHERE question ILIKE '%{question}%' LIMIT 5`.
 
-## Architecture (inherits `docs/ARCHITECTURE.md` truth hierarchy)
+## Architecture (see `docs/ARCHITECTURE_JUDGMENTS.md` for the full vision)
 
 ```
-POST /resolve → TruthRouter (Tier 0 memory → 1 code → 2b string → 2d reasoning → 2c math → 2 calc → 3 retrieval → 4 debate)
-              Tier 3 = pluggable Retrievers (registry, category-gated, reliability+independence weighted)
-              L1 procedure memory = question → trace skeleton (verifiable steps, e.g. handshake n=47 → n*(n-1)/2)
-              Tier 4 debate = async job queue (thinking matrix) — not on hot path
+POST /resolve
+  → memoria (service/memory/store.py — LTM verificado + procedure_sig, 0ms si hit)
+  → backends opcionales (service/backends/, orden fijo o del Director)
+  → retrieval + Corroborator (reliability + independencia + recencia, conflict honesto)
+  → none / POST /jobs/debate (async, fuera del hot path)
+L1 procedure memory = question → trace skeleton (verifiable steps, e.g. handshake n=47 → n*(n-1)/2)
 ```
+
+Nota: el diagrama histórico de “TruthRouter tiers 1–2c” está retirado; el flujo real es el de arriba.
 
 Connectors are modular: `service/connectors/` — add one file + one line in `config/service.yaml` → auto-registered. Same for models: `service/models/registry.py` — declare MLX or API model → choosable per request.
 

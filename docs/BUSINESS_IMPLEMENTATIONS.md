@@ -17,7 +17,7 @@ Monetization: `procedure` `$0.01` / `retrieval corroborated` `$0.03` / `disagree
 ## 3. Financial Reconciliation Copilot
 * **What:** `simple_subtract` `50-22=28`, `work_inverse` `15→3 days 60 people`, `trains_meet` settlement windows.
 * **Who pays:** FinOps / banks.
-* **Why us:** `student_trace.py:25` `verify_trace` (`=` + digit) + `DatabricksSQLRetriever` hits `silver.job_runs`.
+* **Why us:** `verify_trace` (`=` + digit, in the optional core package `cognitive_swarm.tools.student_trace`) + `DatabricksSQLRetriever` hits `silver.job_runs`.
 
 ## 4. Legal Clause QA
 * **What:** `all_but` `23→8`, `stock_eggs` `12→9` → `contract all but 8 survive`.
@@ -50,7 +50,7 @@ Monetization: `procedure` `$0.01` / `retrieval corroborated` `$0.03` / `disagree
 * **Why us:** `46` patterns `184` `CV 0.951` proves structure not memorization.
 
 ## 10. API Metering (infra)
-* **What:** `X-API-Key` + `60/min` `429` `service/app.py:55`.
+* **What:** `X-API-Key` + `60/min` `429` (`service/app.py` — auth/rate-limit middleware; pure helpers `expand_api_keys` / `bucket_key` / `auth_decision`).
 * **Who pays:** All above per `tier`.
 * **Why us:** Private, monetizable, `exempt /health /docs`.
 

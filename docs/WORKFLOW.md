@@ -1,42 +1,40 @@
 # Workflow — After Every Change, Update Agents & Docs (reproducible)
 
-> Rule: no code lands without doc sync. Both repos are private — nothing public. All details stay in `docs/ROADMAP_SERVICE_PRIVATE.md` + `AGENTS.md`.
+> Rule: no code lands without doc sync. **This repo is standalone** — no sibling checkouts, no `../` paths, no cross-repo imports (decisión 2026-09-30). The `cognitive_swarm` core is an *optional package* (pip / PYTHONPATH), never a path dependency. All details stay in `docs/ROADMAP_SERVICE_PRIVATE.md` + `AGENTS.md`.
 
 ## 1. How to proceed after every change (checklist)
 
 Copy-paste for every PR/commit:
 
 ```bash
-# 1. compile + unit
-python -m py_compile cognitive_swarm/tools/*.py cognitive_swarm/memory/*.py cognitive_swarm/orchestration/*.py  # core
-python -m py_compile service/app.py service/connectors/*.py service/memory/*.py service/models/*.py  # service
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH pytest -q  # 8/8 service
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python scripts/generate_procedures.py  # 20/20 (or 40/40)
-python scripts/seed_procedures.py 2>&1 | tail -5  # Databricks 20 (or 40)
+# 1. compile + unit (hermetic — no core package, no Databricks, no network)
+python -m py_compile service/app.py service/contracts.py service/router.py service/corroboration.py \
+  service/backends/*.py service/connectors/*.py service/memory/*.py service/models/*.py \
+  service/jobs/*.py service/judgments/*.py service/orchestrator/*.py tests/*.py
+BACKENDS=__none__ python -m pytest -q   # 56 passed (2026-09-30)
 
-# 2. deterministic validation (0 loads)
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python -c "from fastapi.testclient import TestClient; import service.app as am; am._memory=None; c=TestClient(am.app); from cognitive_swarm.evaluation.leveled_benchmark import LEVELED_PROBLEMS, check_answer; print(sum(1 for p in LEVELED_PROBLEMS if check_answer(c.post('/resolve', json={'question': p['q']}).json().get('answer'), p['a'])), '/120')"
-# -> 120/120
-# procedure hit on new numbers
-curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -d '{"question":"In a group of 88 people each shakes hands with every other exactly once how many handshakes?"}' | python3 -m json.tool | grep -E "answer|tier|trace"
-
-# 3. docs (mandatory)
-# - AGENTS.md (core) — update Procedure/p primitive memory line if patterns/traces changed
-# - AGENTS.md (service) — update hierarchy + procedure count + Databricks tables
-# - docs/ROADMAP_SERVICE_PRIVATE.md — log phase, counts, warehouse, sig (e.g. 6d8cef7d)
+# 2. docs (mandatory — AGENTS.md hook checks this when service/ changes)
+# - AGENTS.md — update state/session findings if branch, counts, or decisions changed
+# - docs/ARCHITECTURE_JUDGMENTS.md — only if architecture moved (freeze rule: no new layer without a measurement)
+# - docs/ROADMAP_SERVICE_PRIVATE.md — log phase status, counts, sigs (nothing public leaves this file)
 # - README.md — update quickstart + Tests & validation if commands changed
-# - docs/RESULTS.md / docs/FINDINGS_STUDENT.md (core) if benchmark numbers changed
+
+# 3. optional, ONLY if the core package is installed locally (not CI, not hermetic):
+#    deterministic 120/120 via POST /resolve + procedure-hit check on new numbers.
+#    Steps: BACKENDS=cognitive_swarm + scripts/seed_procedures.py → curl /resolve → verify tier: procedure.
+#    Distillation scripts (generate_procedures / distill_to_qwen) need the core package and print a
+#    clear error without it. Paraphrase gate said NO (2026-09-30) — do not reopen distillation.
 ```
 
 ## 2. How to start (new task)
 
 ```bash
-# from service repo (build mode, not plan)
+# from this repo root (standalone — nothing outside)
 cd <service-repo-root>
-# 1. read AGENTS.md (this file) + docs/ROADMAP_SERVICE_PRIVATE.md:3 (phases 1→2→3)
-# 2. pick Phase 1 (20→40) or Phase 2 (Qwen) or Phase 3 (vector)
+# 1. read AGENTS.md + docs/ROADMAP_SERVICE_PRIVATE.md (phases + state) + plan/remediacion-hallazgos.md (open phases)
+# 2. pick the phase / finding to close
 # 3. branch: git checkout -b feat/<name>
-# 4. code → checklist above → commit with `feat:` + `python -> python3` note if macOS
+# 4. code → checklist above → commit with `feat:`/`fix:` prefix
 # 5. push: git push origin HEAD
 ```
 
@@ -46,12 +44,12 @@ Install once:
 
 ```bash
 cat > .git/hooks/pre-commit <<'HOOK'
-#!/bin/zsh
+#!/bin/sh
 set -e
 # fail if AGENTS.md or ROADMAP_SERVICE_PRIVATE.md not touched with code changes
-if git diff --cached --name-only | grep -qE "service/|cognitive_swarm/"; then
+if git diff --cached --name-only | grep -qE "service/|tests/"; then
   if ! git diff --cached --name-only | grep -q "AGENTS.md"; then
-    echo "✗ After every change, update AGENTS.md (service + core)"; exit 1
+    echo "✗ After every change, update AGENTS.md"; exit 1
   fi
   if ! git diff --cached --name-only | grep -q "docs/ROADMAP_SERVICE_PRIVATE.md"; then
     echo "✗ After every change, update docs/ROADMAP_SERVICE_PRIVATE.md"; exit 1
@@ -59,15 +57,16 @@ if git diff --cached --name-only | grep -qE "service/|cognitive_swarm/"; then
 fi
 HOOK
 chmod +x .git/hooks/pre-commit
-# optional core checkout: install the same hook in that repo's .git/hooks/ — path is local to the operator, not committed
 ```
 
 ## 4. Private guard (business — nothing public)
 
-* Private (nothing public, never push): `testing.testing_schema.swarm_knowledge` raw, `swarm_procedures` traces + `procedure_sig`, `quality_platform` bronze/silver, `DATABRICKS_HOST` / `DATABRICKS_TOKEN` / `DATABRICKS_WAREHOUSE_ID`, `data/verified_memory.json`, `*.pkl`, `procedure:trace` in `POST /resolve sources[]`.
+* Private (nothing public, never push): `testing.testing_schema.swarm_knowledge` raw, `swarm_procedures` traces + `procedure_sig`, `quality_platform` bronze/silver, `DATABRICKS_HOST` / `DATABRICKS_TOKEN` / `DATABRICKS_WAREHOUSE_ID`, `data/verified_memory.json` (gitignored), `*.pkl`, `procedure:trace` in `POST /resolve sources[]`. Only env placeholders (`${VAR}`) in committed files — an unexpanded `${...}` fails closed.
 
 ## 5. Current doc map
 
-* Private roadmap: `docs/ROADMAP_SERVICE_PRIVATE.md:1` (20→40, 1→2→3, reproducible 65ms warm).
-* Service AGENTS: `AGENTS.md:1` (procedure L1, Databricks live).
-* Core AGENTS: `../cognitive-swarm/AGENTS.md:72` (20/20 POC, give/take fix).
+* Private roadmap: `docs/ROADMAP_SERVICE_PRIVATE.md` (phase status + reproducible quickstart; env-only secrets).
+* Architecture: `docs/ARCHITECTURE_JUDGMENTS.md` (layers, judgments, phases; public-safe).
+* Business pipeline: `docs/BUSINESS_IMPLEMENTATIONS.md` (pipeline, not proof — no monetization claim without pilot numbers).
+* Service state: `AGENTS.md` (branch, tests, measurements, operational facts).
+* Open remediation work: `plan/remediacion-hallazgos.md` (fases 0–6; fase 0+1 done on `feat/remediation-phase-0-auth`).
