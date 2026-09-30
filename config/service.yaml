@@ -29,6 +29,11 @@ backends:
   - cognitive_swarm
 
 # Default Tier 3 connectors (category-gated per Connector.categories).
+# NOTE (fase 5, plan/remediacion-hallazgos.md): every `reliability` below is a
+# POC PRIOR, not a measured frequency — no labeled conflict dataset exists.
+# Changing these values is not calibration/tuning. Same for the bonuses in
+# service/corroboration.py (INDEPENDENCE_BONUS, RECENCY_BONUS): tie-break
+# constants only.
 # enabled:false stays registered but not queried unless caller asks for it explicitly.
 connectors:
   # L3 factual / contested — reliability = authority weight used by Corroborator

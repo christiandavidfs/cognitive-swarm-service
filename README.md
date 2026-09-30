@@ -74,7 +74,7 @@ curl -X POST http://localhost:8000/jobs/debate -H 'content-type: application/jso
 
 Optional Tier 3 source. Host, warehouse id, and token come from the environment (`DATABRICKS_HOST`, `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_TOKEN`) — see `.env.example`. They are not baked into `config/service.yaml`. An unexpanded `${...}` placeholder fails closed: the connector returns no claims.
 
-`databricks auth token` is an operator convenience for a local CLI session, not a production default. Do not deploy assuming a Databricks CLI is installed. Gating that subprocess behind an explicit opt-in is phase 5 of `plan/remediacion-hallazgos.md`; until then, unset `DATABRICKS_TOKEN` can still trigger it.
+`databricks auth token` is opt-in only: the CLI subprocess (`auth token` / profiles sweep) runs solely when `DATABRICKS_ALLOW_CLI_TOKEN=1` (fase 5 of `plan/remediacion-hallazgos.md`, default off). Without a token, the connector fails soft — `get_claims` returns `[]`.
 
 Query template (the question is escaped): `SELECT answer, source, reliability FROM ${DATABRICKS_KNOWLEDGE_TABLE} WHERE question ILIKE '%{question}%' LIMIT 5`.
 

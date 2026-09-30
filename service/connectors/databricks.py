@@ -13,6 +13,9 @@ Config in service.yaml:
     schema: my_schema
     query_template: "SELECT answer, source, reliability FROM my_table WHERE question ILIKE '%{question}%' LIMIT 1"
 Env: DATABRICKS_HOST (https://...cloud.databricks.com), DATABRICKS_TOKEN.
+CLI fallback (`databricks auth token` / profiles sweep) is OPT-IN: it only runs
+when DATABRICKS_ALLOW_CLI_TOKEN=1 (fase 5, plan/remediacion-hallazgos.md).
+Default = no subprocess; missing token → get_claims returns [] (fail soft).
 
 Each row → one SourceClaim. For POC this is a thin passthrough; the
 truth hierarchy treats it as a high-reliability structured source (DB).
@@ -56,7 +59,7 @@ class DatabricksSQLRetriever(Connector):
             self.host = ""
         if isinstance(self.warehouse_id, str) and self.warehouse_id.startswith("${"):
             self.warehouse_id = ""
-        self.token = token or os.getenv("DATABRICKS_TOKEN") or self._fetch_cli_token()
+        self.token = token or os.getenv("DATABRICKS_TOKEN") or (self._fetch_cli_token() if self._cli_token_allowed() else None)
         self.catalog = catalog
         self.schema = schema
         self.query_template = self._default_template(query_template)
@@ -78,8 +81,17 @@ class DatabricksSQLRetriever(Connector):
         return tpl
 
     @staticmethod
+    def _cli_token_allowed() -> bool:
+        """CLI subprocess fallback only with explicit opt-in (default off — fase 5)."""
+        return os.getenv("DATABRICKS_ALLOW_CLI_TOKEN") == "1"
+
+    @staticmethod
     def _fetch_cli_token() -> Optional[str]:
-        """Auto-fetch token via `databricks auth token` (U2M) if env not set — POC convenience, 1h TTL."""
+        """Opt-in (DATABRICKS_ALLOW_CLI_TOKEN=1) token via `databricks auth token` (U2M), 1h TTL.
+
+        Never called unless the caller explicitly opted in; without the flag no
+        subprocess is ever spawned.
+        """
         try:
             import subprocess, json
             out = subprocess.check_output(["databricks", "auth", "token", "--output", "json"], timeout=5)
@@ -90,6 +102,8 @@ class DatabricksSQLRetriever(Connector):
 
     def _refresh_token_if_needed(self):
         if self.token:
+            return
+        if not self._cli_token_allowed():
             return
         if time.time() < self._token_retry_at:
             return
@@ -104,8 +118,8 @@ class DatabricksSQLRetriever(Connector):
 
     def get_claims(self, question: str) -> List[SourceClaim]:
         self._refresh_token_if_needed()
-        # Default host from CLI config if not set
-        if not self.host:
+        # Default host from CLI config ONLY with explicit opt-in (fase 5) — no subprocess by default
+        if not self.host and self._cli_token_allowed():
             try:
                 import subprocess
                 host = subprocess.check_output(["databricks", "auth", "profiles", "--output", "json"], timeout=5)
