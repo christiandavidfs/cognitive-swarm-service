@@ -51,3 +51,27 @@ def test_jev_failure_falls_back_to_heuristic(monkeypatch):
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     t, j = classify_question("What does print(2+3) output?")
     assert t == TaskType.CODE  # heuristic fallback, judge never breaks routing
+
+
+def test_configure_maps_yaml_to_env(tmp_path, monkeypatch):
+    for k in ("JUDGE", "JEV_VIA", "TYPESAFE_BASE_URL", "JEV_MODEL"):
+        monkeypatch.delenv(k, raising=False)
+    cfg = tmp_path / "service.yaml"
+    cfg.write_text("judge:\n  backend: jev\n  jev_via: typesafe\n"
+                   "  base_url: http://127.0.0.1:8019\n  model: kev-latest\n"
+                   "  seats:\n    classify: jev\n")
+    from service.judgments import configure
+    eff = configure(config_path=cfg)
+    import os
+    assert eff["backend"] == "jev" and os.environ["TYPESAFE_BASE_URL"] == "http://127.0.0.1:8019"
+    assert os.environ["JEV_MODEL"] == "kev-latest"
+
+
+def test_explicit_env_wins_over_yaml(tmp_path, monkeypatch):
+    monkeypatch.setenv("JUDGE", "heuristic")
+    for k in ("JEV_VIA", "TYPESAFE_BASE_URL"):
+        monkeypatch.delenv(k, raising=False)
+    cfg = tmp_path / "service.yaml"
+    cfg.write_text("judge:\n  backend: jev\n")
+    from service.judgments import configure
+    assert configure(config_path=cfg)["backend"] == "heuristic"

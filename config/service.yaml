@@ -7,6 +7,20 @@ service:
   # cors origins, log level, etc.
   log_level: "info"
 
+# Judge backend — who implements Choice/Score/Noul (Juicios 1-5).
+# backend: heuristic (free, local regex) | jev (any SystemOne-compatible endpoint:
+#   TypeSafe Jev, local Kev, Vercel gateway). Env JUDGE wins over this file.
+# Switch judges per need without touching code: local Kev for free/private,
+# paid Jev for max accuracy, heuristic when offline.
+judge:
+  backend: heuristic
+  jev_via: typesafe     # typesafe | vercel
+  base_url: ""          # override: e.g. http://127.0.0.1:8019 (local Kev)
+  model: ""             # override: e.g. kev-latest | typesafe-ai/jev
+  api_key_env: ""       # env var holding the key (default per via)
+  seats:                # per-decision override (Fase 4+); classify is live today
+    classify: heuristic
+
 # Resolver backends — optional deterministic solvers, tried in order.
 # Each name loads service/backends/<name>.py; missing backends are skipped
 # (memory + retrieval still serve). Override via BACKENDS env (comma-separated).
