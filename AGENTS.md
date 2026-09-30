@@ -4,12 +4,12 @@
 
 ## What this service is
 
-POC that wraps `../cognitive-swarm` (`TruthRouter` Tiers 0-4) into `FastAPI` at `service/app.py:141` — 65ms warm, 0 loads on deterministic tiers. Adds:
+POC that exposes a truth hierarchy as `FastAPI` — fully standalone repo (no sibling checkouts, no cross-imports). Contracts in `service/contracts.py`, orchestration in `service/router.py`, corroboration in `service/corroboration.py`, memory in `service/memory/store.py`. Optional deterministic backends plug in via `service/backends/` (`BACKENDS=cognitive_swarm` when that package is installed; service runs without it — memory + retrieval still serve). Adds:
 
 * **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `100` traces seeded (`scripts/seed_procedures.py:1` `100/100` verifiable, `testing.testing_schema.swarm_procedures` `100` rows `60` new human diverse `batch200` style, `46` patterns `184` samples `CV 0.951`, Qwen LoRA `150` iters `val 0.416` `11M` `494` entries `17k` tokens).
 * **Pluggable connectors** `service/connectors/registry.py:29` — `config/service.yaml:37` declares `wikidata 0.8` + `openalex 0.9` + `databricks_sql` live (`testing.swarm_knowledge` 7 rows, `Statement API` `warehouses/2b2636d0ca412cdb` auto-start, token via `databricks auth token`), plus stubs `confluence`/`postgres`/`generic_http` (one file + one YAML line).
 * **Model registry** `service/models/registry.py:1` — `phi`/`qwen` MLX sequential (8GB) + `minimax-m3` API, choosable per-request `POST /resolve {models:[...]}`.
-* **Thinking matrix async** `service/jobs/debate_job.py:22` — not on hot path, verifies via `TruthRouter.verify_candidate` then `remember_trace`.
+* **Thinking matrix async** `service/jobs/debate_job.py:22` — not on hot path, verifies via backends then `remember_trace`.
 * **Hardened API** `service/app.py:55` `Auth` (`X-API-Key` / `Bearer`, `exempt /health /docs`) + `rate-limit 60/min` per key (`429` + `Retry-After`), `config/service.yaml:88` `auth.enabled:false` for POC (flip to `true` + `SERVICE_API_KEY` for prod, monetizable).
 
 ## Single most important finding (service)

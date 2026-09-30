@@ -15,29 +15,25 @@ Endpoints:
 from __future__ import annotations
 
 import os
-import sys
 import time
 import logging
 from pathlib import Path
 from typing import List, Optional
-
-# Ensure core is importable when running via `uvicorn service.app:app` from service repo
-CORE_PATH = Path(__file__).parent.parent.parent / "cognitive-swarm"
-if str(CORE_PATH) not in sys.path and CORE_PATH.exists():
-    sys.path.insert(0, str(CORE_PATH))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-# Core
-from cognitive_swarm.orchestration.truth_router import TruthRouter
-from cognitive_swarm.orchestration.corroboration import Corroborator
+# Service-owned: contracts, router, corroboration, memory, backends.
+from service.contracts import Resolution as _Resolution
+from service.corroboration import Corroborator
+from service.router import Router
+from service.backends import load_backends
 
 # Service
 from service.connectors.registry import build_retrievers, describe_registry
-from service.memory.procedure_store import ProcedureStore
+from service.memory.store import ProcedureStore
 from service.jobs.debate_job import create_job, get_job, list_jobs
 from service.models.registry import list_models, available_models
 
@@ -52,7 +48,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -68,10 +64,43 @@ try:
 except Exception:
     _rate_lock = None
 
+# Cache parsed YAML so we don't re-read disk on every request. Invalidated on mtime change.
+_auth_cache: dict = {"mtime": 0.0, "config": None}
+_auth_cache_ttl_s = 30.0
+_auth_cache_ts = 0.0
+_MAX_RATE_BUCKETS = 10000
+
+
+def _sweep_rate_buckets(now: float, window: float = 60.0):
+    """Drop expired entries; cap dict size so idle keys can't grow memory unbounded."""
+    for key in list(_rate_buckets.keys()):
+        dq = _rate_buckets.get(key)
+        if dq is None:
+            continue
+        while dq and dq[0] <= now - window:
+            dq.popleft()
+        if not dq:
+            del _rate_buckets[key]
+    if len(_rate_buckets) > _MAX_RATE_BUCKETS:
+        # Evict oldest-touched buckets first (best effort)
+        for key in list(_rate_buckets.keys())[: len(_rate_buckets) - _MAX_RATE_BUCKETS]:
+            del _rate_buckets[key]
+
+
 def _auth_config():
+    global _auth_cache_ts
     cfg_path = Path(__file__).parent.parent / "config" / "service.yaml"
+    now = time.time()
+    cached = _auth_cache.get("config")
+    if cached is not None and (now - _auth_cache_ts) < _auth_cache_ttl_s:
+        try:
+            if cfg_path.stat().st_mtime == _auth_cache.get("mtime"):
+                return cached
+        except Exception:
+            return cached
     try:
         import yaml
+        mtime = cfg_path.stat().st_mtime
         data = yaml.safe_load(cfg_path.read_text()) or {}
         auth = data.get("auth", {}) if isinstance(data, dict) else {}
         # env expansion for keys
@@ -88,13 +117,19 @@ def _auth_config():
                     expanded.append(ek.strip())
                 elif k.strip() and not k.strip().startswith("${"):
                     expanded.append(k.strip())
-        return {
+        return_cfg = {
             "enabled": bool(auth.get("enabled", False)),
             "keys": set(expanded),
             "limit": int(auth.get("rate_limit_per_min", 60)),
             "exempt": set(auth.get("exempt_paths") or ["/health", "/docs", "/openapi.json", "/redoc"]),
         }
+        _auth_cache["mtime"] = mtime
+        _auth_cache["config"] = return_cfg
+        _auth_cache_ts = now
+        return return_cfg
     except Exception:
+        if _auth_cache.get("config") is not None:
+            return _auth_cache["config"]
         return {"enabled": False, "keys": set(), "limit": 60, "exempt": {"/health", "/docs", "/openapi.json", "/redoc"}}
 
 @app.middleware("http")
@@ -127,6 +162,12 @@ async def _auth_rate_middleware(request: Request, call_next):
                 # purge old
                 while dq and dq[0] <= now - window:
                     dq.popleft()
+                if not dq and len(_rate_buckets) > _MAX_RATE_BUCKETS:
+                    _sweep_rate_buckets(now, window)
+                    dq = _rate_buckets.get(bucket_key)
+                    if dq is None:
+                        dq = _collections.deque()
+                        _rate_buckets[bucket_key] = dq
                 if len(dq) >= limit:
                     return JSONResponse(status_code=429, content={"detail": f"Rate limit {limit}/min exceeded", "retry_after": int(dq[0] + window - now) + 1})
                 dq.append(now)
@@ -148,19 +189,30 @@ async def _auth_rate_middleware(request: Request, call_next):
 
 # Single shared memory + router for the hot path (ProcedureStore persists to ./data/verified_memory.json)
 _memory: Optional[ProcedureStore] = None
-_router: Optional[TruthRouter] = None
+_router: Optional[Router] = None
+_backends_cache = None
 _start_time = time.time()
 
+_mem_cache: dict = {"mtime": 0.0, "ts": 0.0, "config": None}
+
 def _memory_config() -> dict:
-    """Read memory.similarity_threshold from config/service.yaml (fallback 0.85)."""
+    """Read memory.similarity_threshold from config/service.yaml (fallback 0.85). Cached 30s."""
     cfg_path = Path(__file__).parent.parent / "config" / "service.yaml"
+    now = time.time()
     try:
+        mtime = cfg_path.stat().st_mtime
+        if _mem_cache.get("config") is not None and (now - _mem_cache.get("ts", 0)) < 30.0 and mtime == _mem_cache.get("mtime"):
+            return _mem_cache["config"]
         import yaml
         data = yaml.safe_load(cfg_path.read_text()) or {}
         mem = data.get("memory", {}) if isinstance(data, dict) else {}
-        return {"similarity_threshold": float(mem.get("similarity_threshold", 0.85))}
+        # Env override wins: MEMORY_SIMILARITY_THRESHOLD
+        thr_raw = os.getenv("MEMORY_SIMILARITY_THRESHOLD", mem.get("similarity_threshold", 0.85))
+        cfg = {"similarity_threshold": float(thr_raw)}
+        _mem_cache.update({"mtime": mtime, "ts": now, "config": cfg})
+        return cfg
     except Exception:
-        return {"similarity_threshold": 0.85}
+        return _mem_cache.get("config") or {"similarity_threshold": 0.85}
 
 def get_memory() -> ProcedureStore:
     global _memory
@@ -176,13 +228,22 @@ def get_memory() -> ProcedureStore:
             _memory = ProcedureStore(path=data_path, similarity_threshold=thr)
     return _memory
 
-def get_router() -> TruthRouter:
+def get_backends(mem=None):
+    """Load optional resolver backends once (missing backends are skipped)."""
+    global _backends_cache
+    if _backends_cache is None:
+        _backends_cache = load_backends(memory=mem if mem is not None else get_memory())
+    return _backends_cache
+
+
+def get_router() -> Router:
     global _router
     if _router is None:
         mem = get_memory()
         # Default retrievers per config/service.yaml (enabled:true) — gate by category inside router
         retrievers = build_retrievers(enabled_only=True)
-        _router = TruthRouter(memory=mem, corroborator=Corroborator(), retrievers=retrievers)
+        _router = Router(memory=mem, corroborator=Corroborator(), retrievers=retrievers,
+                         backends=get_backends(mem))
     return _router
 
 # --- Schemas
@@ -248,7 +309,8 @@ def resolve(req: ResolveRequest):
     # --- L1 procedure memory: reuse stored reasoning skeleton with NEW numbers (0 loads, ~0.3ms) ---
     # This is the "process not data" tier: same pattern, different numbers -> same procedure_sig
     mem = get_memory()
-    proc = mem.resolve_via_procedure(q) if hasattr(mem, "resolve_via_procedure") else None
+    router = get_router()
+    proc = mem.resolve_via_procedure(q, backends=router.backends)
     if proc and proc.get("reused"):
         # Reused a known procedure — knowledge changed (numbers) but reasoning stayed
         # Return as memory hit with trace in sources for paper story: POST /resolve hits trace in sources[]
@@ -267,9 +329,8 @@ def resolve(req: ResolveRequest):
     # Per-request connector override: build a scoped router so caller can choose sources
     if req.connectors is not None:
         retrievers = build_retrievers(enabled_only=False, include=req.connectors)
-        router = TruthRouter(memory=mem, corroborator=Corroborator(), retrievers=retrievers)
-    else:
-        router = get_router()
+        router = Router(memory=mem, corroborator=Corroborator(), retrievers=retrievers,
+                        backends=router.backends)
     resolution = router.resolve(q)
     # Attach trace if procedure memory has it (or store it now for future reuse)
     trace = None
@@ -340,4 +401,4 @@ def reindex(name: str):
 # For `uvicorn service.app:app --reload` convenience, allow running as script
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", "8000")))

@@ -26,9 +26,7 @@ from typing import List, Optional, Sequence, Dict, Any
 
 import requests
 
-from cognitive_swarm.orchestration.corroboration import SourceClaim
-from cognitive_swarm.orchestration.prompt_optimizer import TaskType
-from .base import Connector
+from .base import Connector, SourceClaim, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +71,8 @@ class GenericHTTPRetriever(Connector):
         reliability_path: Optional[str] = None,
     ):
         self.base_url = _expand_env(base_url or os.getenv("GENERIC_HTTP_BASE_URL") or "")
+        if self.base_url.startswith("${"):
+            self.base_url = ""  # unexpanded placeholder (var unset) -> disabled
         self.reliability = float(reliability)
         self.timeout_s = int(timeout_s)
         self.cache_ttl_s = int(cache_ttl_s)

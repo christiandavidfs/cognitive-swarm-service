@@ -21,9 +21,8 @@ from typing import Dict, List, Optional
 
 import yaml
 
-from cognitive_swarm.orchestration.prompt_optimizer import TaskType
 
-from .base import Connector
+from .base import Connector, TaskType
 
 SERVICE_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "service.yaml"
 

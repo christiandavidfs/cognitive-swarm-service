@@ -7,7 +7,7 @@ Creates/refreshes:
   - testing.testing_schema.swarm_procedures (traces, procedure memory seed)
 
 Uses the Statement Execution API via `databricks auth token` (U2M).
-Warehouse defaults to Serverless Starter 2b2636d0ca412cdb.
+Warehouse defaults to $DATABRICKS_WAREHOUSE_ID (see .env.example).
 
 Usage:
   python scripts/seed_databricks.py              # seed both tables (idempotent)
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -27,10 +28,10 @@ from pathlib import Path
 
 import requests
 
-HOST = "https://dbc-118c13a0-9998.cloud.databricks.com"
-WAREHOUSE = "2b2636d0ca412cdb"
-CATALOG = "testing"
-SCHEMA = "testing_schema"
+HOST = os.getenv("DATABRICKS_HOST", "")
+WAREHOUSE = os.getenv("DATABRICKS_WAREHOUSE_ID", "")
+CATALOG = os.getenv("DATABRICKS_CATALOG", "testing")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "testing_schema")
 
 KNOWLEDGE_TABLE = f"{CATALOG}.{SCHEMA}.swarm_knowledge"
 PROCEDURES_TABLE = f"{CATALOG}.{SCHEMA}.swarm_procedures"
@@ -53,8 +54,17 @@ SAMPLE_PROCEDURES = [
 
 
 def get_token() -> str:
+    tok = os.getenv("DATABRICKS_TOKEN")
+    if tok:
+        return tok
     out = subprocess.check_output(["databricks", "auth", "token", "--output", "json"], timeout=10)
     return json.loads(out.decode())["access_token"]
+
+
+def _require_config():
+    missing = [k for k, v in {"DATABRICKS_HOST": HOST, "DATABRICKS_WAREHOUSE_ID": WAREHOUSE}.items() if not v]
+    if missing:
+        raise SystemExit(f"Missing required env: {', '.join(missing)}. See .env.example.")
 
 
 def run_sql(sql: str, wait: str = "20s") -> dict:
@@ -177,6 +187,7 @@ def main():
     ap.add_argument("--add", type=str, metavar="SPEC", help="add one knowledge row: 'question|answer|source|reliability|category'")
     ap.add_argument("--verify", action="store_true", help="verify sample queries")
     args = ap.parse_args()
+    _require_config()
     if args.query:
         query(args.query)
     elif args.add:

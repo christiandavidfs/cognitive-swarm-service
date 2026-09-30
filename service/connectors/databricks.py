@@ -26,9 +26,7 @@ from typing import List, Optional, Sequence, Dict
 
 import requests
 
-from cognitive_swarm.orchestration.corroboration import SourceClaim
-from cognitive_swarm.orchestration.prompt_optimizer import TaskType
-from .base import Connector
+from .base import Connector, SourceClaim, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +52,30 @@ class DatabricksSQLRetriever(Connector):
         self.timeout_s = int(timeout_s)
         self.cache_ttl_s = int(cache_ttl_s)
         self.host = (host or os.getenv("DATABRICKS_HOST") or "").rstrip("/")
+        if self.host.startswith("${"):
+            self.host = ""
+        if isinstance(self.warehouse_id, str) and self.warehouse_id.startswith("${"):
+            self.warehouse_id = ""
         self.token = token or os.getenv("DATABRICKS_TOKEN") or self._fetch_cli_token()
         self.catalog = catalog
         self.schema = schema
-        self.query_template = query_template
+        self.query_template = self._default_template(query_template)
         self._cache: Dict[str, tuple] = {}
+        self._token_retry_at: float = 0.0
+
+    @staticmethod
+    def _default_template(tpl: Optional[str]) -> Optional[str]:
+        """Fill ${DATABRICKS_KNOWLEDGE_TABLE} default when env is unset (expandvars leaves it literal)."""
+        default_table = os.getenv("DATABRICKS_KNOWLEDGE_TABLE", "testing.testing_schema.swarm_knowledge")
+        if not tpl:
+            return f"SELECT answer, source, reliability FROM {default_table} WHERE question ILIKE '%{{question}}%' LIMIT 5"
+        if "${DATABRICKS_KNOWLEDGE_TABLE}" in tpl or "$DATABRICKS_KNOWLEDGE_TABLE" in tpl:
+            tpl = tpl.replace("${DATABRICKS_KNOWLEDGE_TABLE}", default_table).replace("$DATABRICKS_KNOWLEDGE_TABLE", default_table)
+        # Any other unexpanded ${VAR} means a required env is missing — fail closed, don't query.
+        if "${" in tpl:
+            logger.warning("Databricks query_template has unexpanded env placeholder — skipping")
+            return None
+        return tpl
 
     @staticmethod
     def _fetch_cli_token() -> Optional[str]:
@@ -72,8 +89,14 @@ class DatabricksSQLRetriever(Connector):
             return None
 
     def _refresh_token_if_needed(self):
+        if self.token:
+            return
+        if time.time() < self._token_retry_at:
+            return
+        self.token = self._fetch_cli_token()
         if not self.token:
-            self.token = self._fetch_cli_token()
+            # Negative cache: don't spawn `databricks` subprocess on every request
+            self._token_retry_at = time.time() + 60.0
 
     def _headers(self) -> Dict[str, str]:
         self._refresh_token_if_needed()
@@ -113,9 +136,9 @@ class DatabricksSQLRetriever(Connector):
         if not self.query_template:
             logger.debug("Databricks query_template not set — skipping")
             return []
-        # Very small templating — caller controls SQL; we just inject escaped question
-        import re as _re
-        safe_q = question.replace("'", "''")[:500]
+        # Very small templating — caller controls SQL; we just inject escaped question.
+        # Escape ', \, %, _ so caller input can't break out or widen LIKE. Truncate to 200 chars.
+        safe_q = question.replace("\\", "\\\\").replace("'", "''").replace("%", "\\%").replace("_", "\\_")[:200]
         sql = self.query_template.replace("{question}", safe_q)
         # Optional catalog/schema prefix if template uses bare table
         body = {"warehouse_id": self.warehouse_id, "statement": sql, "wait_timeout": f"{self.timeout_s}s"}

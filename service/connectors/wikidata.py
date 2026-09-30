@@ -20,9 +20,7 @@ from typing import List, Optional, Sequence, Dict
 
 import requests
 
-from cognitive_swarm.orchestration.corroboration import SourceClaim
-from cognitive_swarm.orchestration.prompt_optimizer import TaskType
-from .base import Connector
+from .base import Connector, SourceClaim, TaskType
 
 logger = logging.getLogger(__name__)
 

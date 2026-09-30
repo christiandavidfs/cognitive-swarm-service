@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """Generate 20 procedure traces covering diverse patterns with novel numbers/wording."""
 import sys
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm")
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm-service")
+from pathlib import Path as _P
+_REPO = _P(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
 
-from cognitive_swarm.tools.reasoning_primitives import detect_reasoning_pattern, resolve_reasoning_primitive
-from cognitive_swarm.tools.student_trace import generate_trace, verify_trace
+try:
+    from cognitive_swarm.tools.reasoning_primitives import detect_reasoning_pattern, resolve_reasoning_primitive
+    from cognitive_swarm.tools.student_trace import generate_trace, verify_trace
+except ImportError:
+    raise SystemExit("This script needs the optional cognitive-swarm backend package: "
+                     "pip install <path-to-cognitive-swarm> (see README).")
+
 
 # 20 diverse procedures with novel numbers/wordings NOT in TRAINING_DATA (to show generalization)
 # Wording chosen to match existing deterministic regexes (so traces are verifiable 0-load)

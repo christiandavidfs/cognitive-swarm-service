@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Demo investigation IA — sellable, no Confluence, uses Databricks + procedure (private)."""
 import sys
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm")
-sys.path.insert(0, "/Users/kaizen/repos/cognitive-swarm-service")
+from pathlib import Path as _P
+_REPO = _P(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
 from fastapi.testclient import TestClient
 import service.app as am
 am._memory=None; am._router=None

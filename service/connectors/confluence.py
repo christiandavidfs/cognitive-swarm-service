@@ -18,9 +18,7 @@ from typing import List, Optional, Sequence, Dict
 
 import requests
 
-from cognitive_swarm.orchestration.corroboration import SourceClaim
-from cognitive_swarm.orchestration.prompt_optimizer import TaskType
-from .base import Connector
+from .base import Connector, SourceClaim, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ def _tokens(s: str) -> List[str]:
     return re.findall(r"[a-z][a-z0-9']*", s.lower())
 
 def _significant(tokens: List[str]) -> List[str]:
-    from cognitive_swarm.memory.verified_memory import STOPWORDS
+    from service.memory.store import STOPWORDS
     return [t for t in tokens if t not in STOPWORDS]
 
 class ConfluenceRetriever(Connector):
@@ -47,6 +45,8 @@ class ConfluenceRetriever(Connector):
         email: Optional[str] = None,
     ):
         self.base_url = (base_url or os.getenv("CONFLUENCE_BASE_URL") or "").rstrip("/")
+        if self.base_url.startswith("${"):
+            self.base_url = ""  # unexpanded placeholder (var unset) -> disabled
         self.reliability = float(reliability)
         self.timeout_s = int(timeout_s)
         self.cache_ttl_s = int(cache_ttl_s)
