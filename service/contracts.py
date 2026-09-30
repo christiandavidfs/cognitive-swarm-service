@@ -26,6 +26,7 @@ class SourceClaim:
     reliability: float = 0.5
     independent: bool = True
     reason: str = ""
+    recency: float = 0.5  # 0..1 freshness (1 = freshest); anti-cutoff weight
 
 
 @dataclass

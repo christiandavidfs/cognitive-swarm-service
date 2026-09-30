@@ -48,7 +48,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 ## State / how to resume
 
 * **Branch**: `main` (merged `1c21fd5`). Next work → new `feat/*` branch.
-* **Tests**: `BACKENDS=__none__ python -m pytest -q` → `22/22` (10 API + 4 memory + 5 judgments + 3 curiosity). With core installed: `BACKENDS=cognitive_swarm`.
+* **Tests**: `BACKENDS=__none__ python -m pytest -q` → `24/24` (12 API + 4 memory + 5 judgments + 3 curiosity). With core installed: `BACKENDS=cognitive_swarm`.
 * **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam). Next: curiosity ops 1–2 → recency weight → orchestrator → Jev on Juicio 1 → weekly pipeline → pilot.
 * **Pending measurements**: paraphrase gap MEASURED 2026-09-30 (`scripts/bench_paraphrase.py`): regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1 miss, adds 1 silent wrong: simple_subtract→take_away). GATE SAYS NO — distillation pipeline deferred until student shows ~zero silent wrongs. Remaining: Jev agreement/p95/calibration on own data, escalation-decay curve on live traffic.
 
@@ -70,7 +70,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 ## Conventions
 
-* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `22/22`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved.
+* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `24/24`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved.
 * No bare answer: `Resolution(answer, confidence, sources, disagreement, trace)`.
 * No cross-repo imports, no `../` paths, no baked secrets — ever. CI-check mentally on each diff.
 * Docs: `docs/ARCHITECTURE_JUDGMENTS.md` (vision, public-safe), `docs/ROADMAP_SERVICE_PRIVATE.md` (private), `README.md`.
