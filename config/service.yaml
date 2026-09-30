@@ -85,6 +85,16 @@ models:
     base_url: "https://openrouter.ai/api/v1"
     api_key_env: "OPENROUTER_API_KEY"
     strengths: ["general"]
+  # Vercel AI Gateway (200+ models, one key). Flip enabled:true + AI_GATEWAY_API_KEY.
+  # Uses: debate candidates (anywhere, incl. Docker), curiosity op3 paraphrase,
+  # future vision front-ends. Nano default keeps experiments at fractions of a cent.
+  gateway-nano:
+    enabled: false
+    type: api
+    model: "openai/gpt-5-nano"
+    base_url: "https://ai-gateway.vercel.sh/v1"
+    api_key_env: "AI_GATEWAY_API_KEY"
+    strengths: ["general", "paraphrase", "debate"]
 
 auth:
   # API key auth for monetization (private service). Disabled for POC local dev.
