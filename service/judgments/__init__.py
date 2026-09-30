@@ -7,7 +7,12 @@ Per-need switching without code changes:
   judge.backend: jev + base_url http://127.0.0.1:8019 → local Kev (free, private)
   judge.backend: jev + jev_via vercel → Vercel gateway (paid credits)
   judge.backend: jev (defaults) → TypeSafe direct (paid, cents)
+  judge.backend: laya → open-weights local decision model sidecar (LAYA_BASE_URL,
+                       scripts/laya_server.py) — Gate A/B measured, unknown route
+                       imposed by the adapter (LAYA always returns forced probs).
   judge.seats.classify → per-decision override (Fase 4+).
+  JUDGE_ADJUDICATE=1   → Juicio 3 dual-judge consensus + arbiter on conflict
+                         (service/judgments/adjudicate.py, default OFF).
 """
 from __future__ import annotations
 
