@@ -1,0 +1,13 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install fastapi "uvicorn[standard]" pydantic pydantic-settings httpx pyyaml requests pytest pytest-asyncio
+      - run: python -m py_compile service/app.py service/contracts.py service/router.py service/corroboration.py service/backends/*.py service/connectors/*.py service/memory/*.py service/models/*.py service/jobs/*.py service/judgments/*.py service/orchestrator/*.py tests/*.py
+      - run: BACKENDS=__none__ python -m pytest -q
