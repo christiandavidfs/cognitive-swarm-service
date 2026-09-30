@@ -36,6 +36,9 @@ from service.connectors.registry import build_retrievers, describe_registry
 from service.memory.store import ProcedureStore
 from service.jobs.debate_job import create_job, get_job, list_jobs
 from service.models.registry import list_models, available_models
+from service.judgments import configure as configure_judge
+
+configure_judge()  # [judge] in config/service.yaml → env (explicit env wins)
 
 logger = logging.getLogger(__name__)
 
