@@ -44,9 +44,13 @@ The `.[dev]` extra installs the runtime packages (`fastapi`, `uvicorn`, `pydanti
 uvicorn service.app:app --reload --port 8000
 
 # health + single resolve
+# /health reports "backends": [] when no optional backend is installed
+# (memory + retrieval still serve; deterministic tiers need the backend).
 curl http://localhost:8000/health
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
   -d '{"question":"What does print(2+3) output?"}'
+# ^ requires the optional backend — without `cognitive_swarm` installed this
+#   returns null; only memory + retrieval answer.
 
 # factual via Tier 3 — corroborated with provenance (Databricks requires its env; see section below)
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \

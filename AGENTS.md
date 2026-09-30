@@ -47,6 +47,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 ## State / how to resume
 
+* **Fase 4 = Camino B DONE** (2026-09-30, decisión: el fácil primero): `/health` expone `backends: []` cuando no hay backend opcional; `pyproject.toml` extra `backends = []` documentado (core no está en PyPI, activación solo por path local); README no promete tiers deterministas sin backend. Camino A (`local_primitives`) queda como opción para subir utilidad 6→7 cuando se decida.
 * **Branch**: `feat/remediation-phase-0-auth` — `decd100` (Fase 0 auth fail-closed + Fase 1 tests) → `3964d20` (auditoría docs) → Fase 2 claims fechados + Fase 3 middleware extraído (56/56 tests, sin editar assertions). Pending merge a `main` (@ `0cb8cfd`). Next work → merge it, then new `feat/*` branch.
 * **Tests**: `BACKENDS=__none__ python -m pytest -q` → **56 passed** locally on 2026-09-30 (prior suite 38 + 18 in `tests/test_auth_ratelimit.py`). The auth suite covers fail-closed keys, bucket identity, public-surface leak guards, and LICENSE presence. With core installed: `BACKENDS=cognitive_swarm`.
 * **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam), curiosidad DONE, recencia DONE, familias emergentes DONE (tipos degradados a priors). Next: Kev fine-tune on own labels (needs dataset ≥400) → pilot.

@@ -1,6 +1,6 @@
 # Plan: cerrar hallazgos de la evaluación
 
-> **Estado (2026-09-30):** Fase 0 + Fase 1 HECHAS en `feat/remediation-phase-0-auth` (`decd100`: auth fail-closed, bucket key, purge de fugas, LICENSE, `tests/test_auth_ratelimit.py`). Fase 2 HECHA: drift documental cerrado en la auditoría (`plan/auditoria-docs-2026-09-30.md`) + claims fechados/caveats en README. Fase 3 HECHA: middleware extraído a `service/http_guard.py` (move puro, 56/56 tests sin editar assertions, `app.py` 464→287 líneas). Pendiente: Fase 4 (decisión de producto A/B), Fase 5, Fase 6 (gated).
+> **Estado (2026-09-30):** Fase 0 + Fase 1 HECHAS en `feat/remediation-phase-0-auth` (`decd100`: auth fail-closed, bucket key, purge de fugas, LICENSE, `tests/test_auth_ratelimit.py`). Fase 2 HECHA: drift documental cerrado en la auditoría (`plan/auditoria-docs-2026-09-30.md`) + claims fechados/caveats en README. Fase 3 HECHA: middleware extraído a `service/http_guard.py` (move puro, 56/56 tests sin editar assertions, `app.py` 464→287 líneas). Fase 4 HECHA — Camino B (honesto): `/health` expone `backends`, extra `backends = []` en `pyproject.toml`, README sin promesas de tiers sin backend; Camino A (`local_primitives`) queda abierto para subir utilidad. Pendiente: Fase 5 (pesos como priors + CLI token opt-in), Fase 6 (gated por medición).
 >
 > **Fuente:** `cognitive-swarm-service-evaluacion.md` (re-evaluación 2026-09-30, `HEAD` `0cb8cfd`).
 > **Tipo:** plan de remediación. No implementa. No añade capa cognitiva.

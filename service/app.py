@@ -159,6 +159,7 @@ def health():
         "status": "ok",
         "uptime_s": round(time.time() - _start_time, 1),
         "memory_entries": mem.size(),
+        "backends": [b.name for b in get_backends(mem)],  # [] = no optional backend installed
         "hierarchy": ["memory", "executor", "string-op", "reasoning-primitives", "math-primitives", "calculator", "retrieval (Wikidata/OpenAlex/LocalDocs/Confluence/Databricks/Postgres/generic_http)", "debate (async)"],
     }
 

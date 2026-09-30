@@ -16,6 +16,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "pytest-asyncio>=0.23", "httpx", "black"]
+# The deterministic backend package `cognitive_swarm` is NOT on PyPI (private).
+# To activate it, install from its local checkout: pip install -e <path-to-cognitive-swarm>
+# This extra stays empty on purpose — do not publish the core package.
+backends = []
 
 [build-system]
 requires = ["hatchling"]
