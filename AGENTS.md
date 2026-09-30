@@ -77,4 +77,4 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 * **Evidence before claims**: no monetization or superiority claim without pilot numbers on real data. `docs/BUSINESS_IMPLEMENTATIONS.md` is pipeline, not proof.
 * No bare answer: `Resolution(answer, confidence, sources, disagreement, trace)`.
 * No cross-repo imports, no `../` paths, no baked secrets — ever. CI-check mentally on each diff.
-* Docs: `docs/ARCHITECTURE_JUDGMENTS.md` (vision, public-safe), `docs/ROADMAP_SERVICE_PRIVATE.md` (private), `README.md`.
+* Docs: `docs/ARCHITECTURE_JUDGMENTS.md` (vision, public-safe), `docs/MEASUREMENTS.md` (gate log — read before proposing builds), `docs/ROADMAP_SERVICE_PRIVATE.md` (private), `README.md`.
