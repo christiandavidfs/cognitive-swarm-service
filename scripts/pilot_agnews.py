@@ -53,6 +53,7 @@ def main():
 
     correct = brier = auto_ok = auto_n = 0
     rows = []
+    preds = []
     t0 = time.time()
     for i, ex in enumerate(ds):
         text, label = ex["text"][:800], LABELS[ex["label"]]
@@ -70,6 +71,7 @@ def main():
         if conf >= 0.9:
             auto_n += 1
             auto_ok += choice == label
+        preds.append({"text": text, "label": label, "choice": choice, "confidence": conf, "probs": probs})
         rows.append({"state": text, "questions": {
             "desk": {"type": "choice",
                      "instructions": QUESTION["desk"]["instructions"],
@@ -81,6 +83,7 @@ def main():
     Path = _P(args.save)
     Path.parent.mkdir(parents=True, exist_ok=True)
     Path.write_text("\n".join(json.dumps(r) for r in rows))
+    _P(str(args.save).replace(".jsonl", ".preds.json")).write_text(json.dumps(preds))
     err51 = 1 - (auto_ok / auto_n) if auto_n else 1.0
     print(f"\naccuracy {correct}/{n}={correct / max(n, 1):.3f}  brier {brier / max(n, 1):.3f}")
     print(f"automated@conf>=0.9: {auto_n}/{n} err={err51:.3f} (author yardstick: 5% error budget)")
@@ -89,3 +92,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# NOTE appended: predictions dump for offline analysis (confusion, sweep).
