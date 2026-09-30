@@ -49,7 +49,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 * **Branch**: `main` (merged `1c21fd5`). Next work → new `feat/*` branch.
 * **Tests**: `BACKENDS=__none__ python -m pytest -q` → `19/19` (10 API + 4 memory + 5 judgments). With core installed: `BACKENDS=cognitive_swarm`.
-* **Roadmap**: Fase 1 DONE (learning memory). Next: Fase 2 `service/judgments/` heuristic → paraphrase benchmark (distillation gate) → curiosity ops 1–2 → recency weight → orchestrator → Jev on Juicio 1 → weekly pipeline → pilot (game/paper first; medicine triage only, late).
+* **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam). Next: paraphrase benchmark (distillation gate) → curiosity ops 1–2 → recency weight → orchestrator → Jev on Juicio 1 → weekly pipeline → pilot.
 * **Pending measurements** (do before building): paraphrase gap, Jev agreement/p95/calibration on own data, escalation-decay curve on any live traffic.
 
 ## Private — nothing public
