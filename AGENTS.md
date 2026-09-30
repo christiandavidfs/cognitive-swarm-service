@@ -1,30 +1,56 @@
 # AGENTS.md — Cognitive Swarm Service
 
-> Read this before changing code or running experiments. This is the service layer that turns the local swarm into a **monetizable API** with procedure memory and pluggable truth sources.
+> Read this before changing code or running experiments. Standalone repo (no sibling checkouts, no cross-imports). This is becoming a **layered cognitive system** (reflexes → judgments → deliberation → external truth), not just a Q&A API. Full vision: `docs/ARCHITECTURE_JUDGMENTS.md`.
 
 ## What this service is
 
-POC that exposes a truth hierarchy as `FastAPI` — fully standalone repo (no sibling checkouts, no cross-imports). Contracts in `service/contracts.py`, orchestration in `service/router.py`, corroboration in `service/corroboration.py`, memory in `service/memory/store.py`. Optional deterministic backends plug in via `service/backends/` (`BACKENDS=cognitive_swarm` when that package is installed; service runs without it — memory + retrieval still serve). Adds:
+POC that exposes a truth hierarchy as `FastAPI` — fully standalone. Contracts in `service/contracts.py`, orchestration in `service/router.py`, corroboration in `service/corroboration.py`, memory in `service/memory/store.py`. Optional deterministic backends plug in via `service/backends/` (`BACKENDS=cognitive_swarm` when that package is installed; service runs without it — memory + retrieval still serve). Adds:
 
-* **Procedure memory** `service/memory/procedure_store.py:12` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers (same reasoning, e.g. handshake `100→88` same `6d8cef7d`). `100` traces seeded (`scripts/seed_procedures.py:1` `100/100` verifiable, `testing.testing_schema.swarm_procedures` `100` rows `60` new human diverse `batch200` style, `46` patterns `184` samples `CV 0.951`, Qwen LoRA `150` iters `val 0.416` `11M` `494` entries `17k` tokens).
-* **Pluggable connectors** `service/connectors/registry.py:29` — `config/service.yaml:37` declares `wikidata 0.8` + `openalex 0.9` + `databricks_sql` live (`testing.swarm_knowledge` 7 rows, `Statement API` `warehouses/2b2636d0ca412cdb` auto-start, token via `databricks auth token`), plus stubs `confluence`/`postgres`/`generic_http` (one file + one YAML line).
-* **Model registry** `service/models/registry.py:1` — `phi`/`qwen` MLX sequential (8GB) + `minimax-m3` API, choosable per-request `POST /resolve {models:[...]}`.
-* **Thinking matrix async** `service/jobs/debate_job.py:22` — not on hot path, verifies via backends then `remember_trace`.
-* **Hardened API** `service/app.py:55` `Auth` (`X-API-Key` / `Bearer`, `exempt /health /docs`) + `rate-limit 60/min` per key (`429` + `Retry-After`), `config/service.yaml:88` `auth.enabled:false` for POC (flip to `true` + `SERVICE_API_KEY` for prod, monetizable).
+* **Procedure memory** `service/memory/store.py` — `question → trace → answer` with `procedure_sig` (numbers stripped), L1 `tier: procedure` on new numbers. Entries carry learning counters `attempts/successes/first_seen/last_hit` (monotonic — re-remember never resets) + `record_outcome()` + `prune()` (only executes with history).
+* **STM sessions** `service/memory/session.py` — per-`session_id` ring buffer `(question, answer, source, trace, outcome)`; `consolidate(session_id, store)` archives only steps with known outcome (failures count via `record_outcome` but aren't enshrined).
+* **Pluggable connectors** `service/connectors/registry.py` — `wikidata` + `openalex` + `databricks_sql` (env-driven, no baked secrets; unexpanded `${VAR}` fails closed to disabled) + `local_docs` standalone lexical index (`LOCAL_DOCS_DIR`, default `./retrieval_corpus`) + stubs `confluence`/`postgres`/`generic_http`.
+* **First-ingestion ritual** `scripts/ingest_corpus.py` — indexes a corpus dir, reports files/chunks/probe HIT-MISS vs threshold. Kills the *knowledge* cold start day one (procedure cold start remains: curiosity/network).
+* **Model registry** `service/models/registry.py` — `phi`/`qwen` MLX (lazy, optional) + `minimax-m3` API, choosable per-request.
+* **Thinking matrix async** `service/jobs/debate_job.py` — not on hot path, verifies via backends then `remember_trace`.
+* **Hardened API** `service/app.py` — Auth (`X-API-Key`/`Bearer`, exempt `/health /docs`) + rate-limit 60/min per key (`429` + `Retry-After`, bounded buckets, cached YAML config), `auth.enabled:false` for POC. CORS `*` with `allow_credentials=False`.
 
-## Single most important finding (service)
+## Thesis (decided, do not relitigate without measurements)
 
-Deterministic `120/120` still holds with all connectors `120/120 via HTTP` — retrieval never poisons L2 (gate `_has_math_structure` + `local_docs threshold 0.35` + `memory 0.85` `config/service.yaml:80`). Contested surfaces `disagreement` honestly (e.g. `What caused fall?` → `economic decline` vs `barbarian invasions` vs `wikidata 395 CE`). Procedure `88` same sig proves **process not data**.
+Small models + deterministic patterns + **process memory (not data)** beat big models on operational volume. Code computes (free), models only see irreducible uncertainty, and that zone shrinks as LTM learns. Escalation-rate-to-models over time **is the learning curve** — if it doesn't decay, the thesis loses (falsifiable by design).
 
-## Architecture — truth hierarchy with procedure L1
+## Architecture — layered, brain-mapped
 
 ```
-POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 0.3ms TF-IDF, no load)
-              → Tier 1 code → 2b string → 2d reasoning (give/take disambiguated before student) → 2c math → 2 calc → 3 retrieval (category-gated, reliability+independence) → 4 debate async
+POST /resolve → Tier 0 memory → backends (deterministic, in order) → Tier 3 retrieval+corroboration → none/debate
+Reflejos (reptiliano: primitivas+LTM exacta, bypass — ningún modelo en el hot path determinista)
+Juicios (límbico: service/judgments/ Choice/Score/Noul — solo rutas, nunca respuestas)
+Deliberación (neocórtex: debate + reasoners destilados, último recurso)
+Director (orquestador pequeño: aprende política de ruteo con outcomes, tras los reflejos, con fallback+unknown)
 ```
-* `reasoning_primitives.py:42` `take_away` before student, `give away → simple_subtract` also before student (TF-IDF confuses them).
-* `student_trace.py:25` `33` templates verifiable (`=` + digits, `20→33` with stock `moses/bear/race...`), `verify_trace` used by distill.
-* Modules: `service/app.py:55` (FastAPI), `service/memory/procedure_store.py:40` (trace+sig), `service/connectors/databricks.py:36` (Statement API, `LIMIT 5` for contested), `service/models/registry.py:40` (MLX/API).
+
+* **Jev placement (5 seats, between tiers, never inside)**: 1 classify, 2 escalate, 3 adjudicate-on-conflict, 4 verify_trace-before-archive, 5 select_backend. Thresholds differ per action risk. Jev is interchangeable — layer works on heuristics.
+* **Recency is the missing corroboration weight** (anti-cutoff mechanism). Reliability+independence exist; recency does not — add as Juicio 6 eventually.
+* **Curiosity (designed, operators 1–2 unbuilt)**: `service/jobs/curiosity_job.py` — mutate (numbers/entities, composition) + paraphrase (Qwen only rewords); novelty filter by `procedure_sig`; verification gate (failures = detector blind-spot map); daily budget; ignorance-targeting via `attempts/successes`. Expansion curiosity (BFS over sources) is weaker-grade, lives in retrieval corpus, never contaminates deterministic LTM.
+* **Weekly distillation (designed, pipeline unbuilt)**: LTM-export → LoRA → holdout gate (agreement vs deterministic core) → shadow week → promote/rollback. Distillation compresses cache + generalizes phrasing; it never raises the reasoning ceiling.
+* **Federated process learning (next-level bet)**: `procedure_sig`s carry zero data → instances can pool libraries across orgs without leaking facts. Kills procedure cold start; creates network-effect moat. Requires versioning + cross-instance success weighting + local veto (all unbuilt).
+* **Monotonicity guarantee**: versioned LTM never forgets/regresses (ratchet); model releases do. Never break this.
+
+## Session findings 2026-09-30 (decisions taken)
+
+* Standalone > coupled: repos must never depend on each other (was: `CORE_PATH` hack, `../cognitive-swarm` paths, Dockerfile context `..`). Verified: `10/10` tests with no backends; adapter live-tested vs real core (`print(2+3)→5`, handshake `88→3828`).
+* Nothing hardcoded except patterns: secrets/paths via env + `.env.example`; `QUESTION_PATTERNS`/reasoning patterns stay as domain data.
+* Regex stays BEFORE TF-IDF: regex fails loud (safe), TF-IDF fails silent (needs signatures). Never invert.
+* Retraining verdict: improves latency + paraphrase robustness + cost, NOT reasoning ceiling. Build pipeline only if paraphrase benchmark (TF-IDF/regex vs Qwen on unseen rewordings) shows a real gap.
+* Fake-news fit: claim extraction → per-claim corroboration → honest conflict; narrative `procedure_sig`s catch recycled hoaxes. Assistive + human-in-loop only, never autonomous arbiter.
+* Commercial: sellable in verticals with measurable ROI (cost/decision + human-escalation rate), not as general AI API. Needs customer-data evals, SLAs, SOC2. Next value unlock = paid pilot with real data, not more architecture.
+* Cold start split: knowledge cold start dies day one via ingestion; procedure cold start needs curiosity/network.
+
+## State / how to resume
+
+* **Branch**: `main` (merged `1c21fd5`). Next work → new `feat/*` branch.
+* **Tests**: `BACKENDS=__none__ python -m pytest -q` → `14/14` (10 API + 4 memory-learning). With core installed: `BACKENDS=cognitive_swarm`.
+* **Roadmap**: Fase 1 DONE (learning memory). Next: Fase 2 `service/judgments/` heuristic → paraphrase benchmark (distillation gate) → curiosity ops 1–2 → recency weight → orchestrator → Jev on Juicio 1 → weekly pipeline → pilot (game/paper first; medicine triage only, late).
+* **Pending measurements** (do before building): paraphrase gap, Jev agreement/p95/calibration on own data, escalation-decay curve on any live traffic.
 
 ## Private — nothing public
 
@@ -32,25 +58,19 @@ POST /resolve → Tier 0 memory (exact, 0.85) → L1 procedure (reuse skeleton, 
 |------|----------|------------|
 | `testing.swarm_knowledge` raw Q/A | `testing.testing_schema` `ISOLATED` | **Private** |
 | `quality_platform` bronze/silver | `quality_platform.*` | **Private**, not queried |
-| `swarm_procedures` traces | `testing...swarm_procedures` + `data/verified_memory.json` traces | **Private** (was shareable, now private per owner — nothing public) |
-| `DATABRICKS_HOST/TOKEN` `warehouse 2b2636...` | `~/.databricks` `personal` | **Private**, `.gitignore` |
+| `swarm_procedures` traces | `testing...swarm_procedures` + `data/verified_memory.json` traces | **Private** (nothing public) |
+| `DATABRICKS_HOST/TOKEN` warehouse | env only (`.env.example` has placeholders) | **Private**, never baked |
 
 ## Operational facts
 
-* **Python**: `python3` (symlinked, `python` also works after `de875eb`), `swarm` venv `../swarm/cognitive-swarm-env/bin/python3` has `sklearn` for `student_router` train; service venv has `fastapi`.
-* **Databricks**: `databricks auth login` `personal` `dbc-118c13a0-9998...`, `warehouses list` `2b2636...` `STOPPED` auto-start `10s`, `scripts/seed_databricks.py --verify` `7` rows.
-* **Scripts**: `scripts/seed_databricks.py --verify` (knowledge 7), `scripts/seed_procedures.py` `100/100` (`80→100` `batch200` diverse), `scripts/generate_procedures.py` `100/100`, `scripts/distill_to_qwen.py` `514` entries `18k` tokens `CV 0.962` `Qwen 150 iters val 0.367` `train 0.493` `11M` on `100`.
-* **Thresholds**: `memory 0.85` prevents `fall` vs `cause of fall` blur; `local_docs 0.35` prevents `5 machines` false hit.
+* **Python**: brew `python3` (3.14); use `/home/linuxbrew/.linuxbrew/bin/python3 -m pytest`; needs `--break-system-packages` for pip installs. `cognitive-swarm` core clone at `/home/kaizen/repos/cognitive-swarm` (no pyproject — usable via `PYTHONPATH`, adapter only).
+* **Scripts**: `seed_databricks.py --verify` (needs env, fails fast), `ingest_corpus.py <dir>` (report only), `seed_procedures.py`/`generate_procedures.py`/`distill_to_qwen.py` need core package (clear error otherwise).
+* **Thresholds**: `memory 0.85` (env `MEMORY_SIMILARITY_THRESHOLD`), `local_docs 0.35`, LIKE `%,_,\` escaped + 200-char clamp in databricks queries.
 * **Results non-deterministic** for debate only; deterministic tiers reproducible.
-
-## Open items (turn into tasks)
-
-* Phase 1 `100→120` `batch200` full `200` (was `80→100` done), `100` traces live `46` patterns `CV 0.951` `val 0.367`.
-* Phase 2 Qwen LoRA `question→trace` DONE `150` iters on `100` (`11M` `val 0.367` `train 0.493`), next: bench `100` via API `procedure:handshake` vs `qwen_router` on `batch200`.
-* Phase 3 Vector Search hybrid for `1000+` docs (after `CONFLUENCE` when available).
 
 ## Conventions
 
-* After **every** change: `python -m py_compile service/app.py service/connectors/*.py service/memory/*.py service/models/*.py`, `pytest -q` `8/8`, `curl` new-numbers `tier: procedure`, update `docs/ROADMAP_SERVICE_PRIVATE.md` + this file + `README.md`.
+* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `14/14`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved.
 * No bare answer: `Resolution(answer, confidence, sources, disagreement, trace)`.
-* Docs: `docs/ROADMAP_SERVICE_PRIVATE.md` (private, reproducible, nothing public), `README.md` private.
+* No cross-repo imports, no `../` paths, no baked secrets — ever. CI-check mentally on each diff.
+* Docs: `docs/ARCHITECTURE_JUDGMENTS.md` (vision, public-safe), `docs/ROADMAP_SERVICE_PRIVATE.md` (private), `README.md`.
