@@ -23,12 +23,42 @@ def available() -> bool:
         return False
 
 
+class _WriteThroughShim:
+    """Core-facing memory: reads always miss, writes forward with signature.
+
+    The service Router already checked Tier 0 (signature-aware) before the
+    backend runs, so a core-side hit could only be a blur. Writes forward to
+    the real store with the backend-computed signature attached.
+    """
+
+    def __init__(self, backend: "CognitiveSwarmBackend"):
+        self._backend = backend
+
+    @property
+    def _store(self):
+        return self._backend._memory
+
+    def lookup(self, question: str):
+        return None
+
+    def remember(self, question: str, answer: str, **kwargs):
+        store = self._store
+        if store is None:
+            return
+        try:
+            store.remember(question, answer, signature=self._backend.signature(question), **kwargs)
+        except Exception:
+            pass
+
+
 class CognitiveSwarmBackend(ResolverBackend):
     """Wraps the core TruthRouter (deterministic tiers only, no retrieval).
 
     Retrieval stays service-side so all connectors share one gate and one
-    corroborator regardless of backend. Our store is passed as the core's
-    memory (duck-typed: lookup/remember match).
+    corroborator regardless of backend. Memory reads stay service-side too:
+    the core gets a write-forwarding shim whose lookup always misses, so the
+    core can never blur near-duplicates through signature-less lookup —
+    Tier 0 (signature-aware) belongs to the service Router.
     """
 
     name = "cognitive_swarm"
@@ -41,7 +71,7 @@ class CognitiveSwarmBackend(ResolverBackend):
         if self._router is None:
             from cognitive_swarm.orchestration.truth_router import TruthRouter
             from cognitive_swarm.orchestration.corroboration import Corroborator
-            self._router = TruthRouter(memory=self._memory, corroborator=Corroborator(), retrievers=[])
+            self._router = TruthRouter(memory=_WriteThroughShim(self), corroborator=Corroborator(), retrievers=[])
         return self._router
 
     def classify(self, question: str) -> TaskType:
