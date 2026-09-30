@@ -132,3 +132,31 @@ def test_jobs_debate_enqueue():
     r2 = client.get(f"/jobs/{jid}")
     assert r2.status_code == 200
     assert r2.json()["status"] in ("queued", "running", "done", "failed")
+
+
+def test_recency_breaks_ties_fresh_wins():
+    from service.corroboration import Corroborator
+    from service.contracts import SourceClaim
+    # 1-vs-1 stays honest conflict (share can't reach 0.6) — recency must not coronate alone
+    v = Corroborator().corroborate([
+        SourceClaim(source="old-doc", answer="Alpha", reliability=0.8, recency=0.0),
+        SourceClaim(source="new-doc", answer="Beta", reliability=0.8, recency=1.0),
+    ])
+    assert v.status == "conflict" and v.answer is None
+    # 2 fresh vs 1 stale with equal reliability → fresh corroborates
+    v2 = Corroborator().corroborate([
+        SourceClaim(source="old-doc", answer="Alpha", reliability=0.8, recency=0.0),
+        SourceClaim(source="new-doc", answer="Beta", reliability=0.8, recency=1.0),
+        SourceClaim(source="new-doc-2", answer="Beta", reliability=0.8, recency=0.9),
+    ])
+    assert v2.status == "corroborated" and v2.answer == "Beta"
+
+
+def test_recency_neutral_preserves_legacy():
+    from service.corroboration import Corroborator
+    from service.contracts import SourceClaim
+    v = Corroborator().corroborate([
+        SourceClaim(source="a", answer="Same", reliability=0.8),
+        SourceClaim(source="b", answer="Same", reliability=0.8),
+    ])
+    assert v.status == "corroborated" and v.answer == "Same"

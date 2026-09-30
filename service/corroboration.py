@@ -19,6 +19,7 @@ class Corroborator:
     """Aggregate clashing source claims into an honest verdict."""
 
     INDEPENDENCE_BONUS = 0.5
+    RECENCY_BONUS = 0.3  # anti-cutoff: fresh sources outvote stale ones on ties
 
     def corroborate(self, claims: List[SourceClaim]) -> Verdict:
         if not claims:
@@ -38,6 +39,7 @@ class Corroborator:
             w = c.reliability
             if c.independent:
                 w += self.INDEPENDENCE_BONUS
+            w += (max(0.0, min(1.0, c.recency)) - 0.5) * self.RECENCY_BONUS
             clusters[key]["weight"] += w
             clusters[key]["best_reliability"] = max(clusters[key]["best_reliability"], c.reliability)
             clusters[key]["independent_count"] += 1 if c.independent else 0

@@ -81,12 +81,20 @@ class LocalDocsConnector(Connector):
                     continue
                 try:
                     text = fp.read_text(encoding="utf-8", errors="ignore")
+                    mtime = fp.stat().st_mtime
                 except OSError:
                     continue
                 for ch in _chunks(text, self.chunk_size):
-                    docs.append((str(fp), ch))
+                    docs.append((str(fp), ch, mtime))
         self._index = docs
         return docs
+
+    @staticmethod
+    def _recency(mtime: float, mtimes: List[float]) -> float:
+        """Normalize file mtime to [0,1]; single file or tie → neutral 0.5."""
+        if not mtimes or max(mtimes) == min(mtimes):
+            return 0.5
+        return round((mtime - min(mtimes)) / (max(mtimes) - min(mtimes)), 3)
 
     def get_claims(self, question: str) -> List[SourceClaim]:
         norm = question.strip().lower()
@@ -101,23 +109,25 @@ class LocalDocsConnector(Connector):
         q_set = set(_significant(_tokens(question)))
         if not q_set:
             return []
-        best, best_score, best_path = None, 0.0, ""
-        for path, chunk in self._load_index():
+        best, best_score, best_path, best_mtime = None, 0.0, "", 0.0
+        for path, chunk, mtime in self._load_index():
             sig = set(_significant(_tokens(chunk)))
             if not sig:
                 continue
             score = len(q_set & sig) / max(len(q_set), 1)
             if score > best_score:
-                best, best_score, best_path = chunk, score, path
+                best, best_score, best_path, best_mtime = chunk, score, path, mtime
         if best is None or best_score < self.match_threshold:
             return []
         ans = _extract_answer(best)
         if not ans:
             return []
+        mtimes = [m for _, _, m in self._load_index()]
         return [SourceClaim(
             source=f"local-docs:{Path(best_path).name}",
             answer=ans,
             reliability=self.reliability,
             independent=True,
             reason=f"lexical overlap {best_score:.2f}",
+            recency=self._recency(best_mtime, mtimes),
         )]
