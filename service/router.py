@@ -41,11 +41,19 @@ def has_math_structure(question: str) -> bool:
 class Router:
     def __init__(self, memory=None, corroborator: Optional[Corroborator] = None,
                  retrievers: Optional[List[Connector]] = None,
-                 backends: Optional[List[ResolverBackend]] = None):
+                 backends: Optional[List[ResolverBackend]] = None,
+                 director=None):
         self.memory = memory
         self.corroborator = corroborator or Corroborator()
         self.retrievers: List[Connector] = list(retrievers or [])
         self.backends: List[ResolverBackend] = list(backends or [])
+        if director is None:
+            try:
+                from .orchestrator import Director
+                director = Director()
+            except Exception:
+                director = None
+        self.director = director
 
     def classify(self, question: str) -> TaskType:
         for backend in self.backends:
@@ -89,13 +97,17 @@ class Router:
 
         task_type = self.classify(question)
 
+        # Director orders backends (stats policy; signal-free → config order).
+        backends = self._order_backends(task_type)
+
         # Deterministic backends in order.
-        for backend in self.backends:
+        for backend in backends:
             try:
                 ans = backend.solve(question)
             except Exception:
                 continue
             if ans is not None and ans.answer is not None:
+                self._record_routing(backend.name, task_type, True)
                 if self.memory is not None:
                     try:
                         self.memory.remember(
@@ -121,6 +133,7 @@ class Router:
         if claims:
             verdict = self.corroborator.corroborate(claims)
             if verdict.status == "corroborated":
+                self._record_routing("retrieval", task_type, True)
                 if self.memory is not None:
                     try:
                         self.memory.remember(
@@ -132,12 +145,32 @@ class Router:
                         pass
                 return Resolution(verdict.answer, verdict.confidence, "retrieval", "retrieval",
                                   sources=verdict.provenance, disagreement=verdict.disagreement)
+            self._record_routing("retrieval", task_type, False)
             sources = [{"name": cl["sources"], "reliability": cl["best_reliability"]}
                        for cl in verdict.clusters.values()]
             return Resolution(None, verdict.confidence, "retrieval", "conflict",
                               sources=sources, disagreement=verdict.disagreement)
 
         return Resolution(None, 0.0, "none", "debate")
+
+    def _order_backends(self, task_type: TaskType) -> list:
+        if self.director is None:
+            return list(self.backends)
+        try:
+            names = [b.name for b in self.backends]
+            ordered = self.director.order(names, task_type)
+            by_name = {b.name: b for b in self.backends}
+            return [by_name[n] for n in ordered if n in by_name]
+        except Exception:
+            return list(self.backends)
+
+    def _record_routing(self, layer: str, task_type: TaskType, success: bool) -> None:
+        if self.director is None:
+            return
+        try:
+            self.director.record(layer, task_type, success)
+        except Exception:
+            pass
 
     def verify_candidate(self, question: str, candidate: str) -> bool:
         for backend in self.backends:
