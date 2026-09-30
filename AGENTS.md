@@ -50,7 +50,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 * **Branch**: `main` (merged `1c21fd5`). Next work → new `feat/*` branch.
 * **Tests**: `BACKENDS=__none__ python -m pytest -q` → `28/28` (12 API + 4 memory + 5 judgments + 3 curiosity + 4 orchestrator). With core installed: `BACKENDS=cognitive_swarm`.
 * **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam), curiosidad DONE, recencia DONE. Next: Jev on Juicio 1 → weekly pipeline → pilot.
-* **Pending measurements**: paraphrase gap MEASURED 2026-09-30 (`scripts/bench_paraphrase.py`): regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1 miss, adds 1 silent wrong: simple_subtract→take_away). GATE SAYS NO — distillation pipeline deferred until student shows ~zero silent wrongs. Remaining: Jev agreement/p95/calibration on own data, escalation-decay curve on live traffic.
+* **Pending measurements**: paraphrase gap MEASURED 2026-09-30 (`scripts/bench_paraphrase.py`): regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1 miss, adds 1 silent wrong). GATE SAYS NO — distillation deferred. Kev-0.8B local (RTX 3060 6GB, KEV_CUDA_GRAPHS=0, :8019) Juicio 1 MEASURED (`scripts/measure_jev_classify.py`): 0/12 vs our taxonomy — lumps story+numbers into math (conf 0.18 hard → 0.88 canonical, so calibration signal is real but labels mismatch). VERDICT: no extend zero-shot; path = fine-tune on own routing labels when dataset ≥400 (documented Kev recipe). Remaining: escalation-decay curve on live traffic.
 
 ## Private — nothing public
 

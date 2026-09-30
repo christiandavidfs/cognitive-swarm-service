@@ -7,6 +7,8 @@ without touching the router.
 """
 from __future__ import annotations
 
+import os
+
 from service.contracts import TaskType
 from .primitives import Judgment, choose
 
@@ -17,7 +19,21 @@ _MATH_RE = _re.compile(r"\d\s*[-+*/^%]\s*\d|\d\s*(?:plus|minus|times|divided by)
 
 
 def classify_question(question: str) -> tuple:
-    """Return (TaskType, Judgment). UNKNOWN comes with unknown=True set."""
+    """Return (TaskType, Judgment). UNKNOWN comes with unknown=True set.
+
+    `JUDGE=jev` (plus TYPESAFE_API_KEY) routes to the Jev-backed classifier;
+    any Jev failure falls back to heuristics — a judge must never break routing.
+    """
+    if os.getenv("JUDGE", "heuristic").lower() == "jev":
+        try:
+            from .jev import classify_question as _jev_classify
+            return _jev_classify(question)
+        except Exception:
+            pass
+    return _heuristic_classify(question)
+
+
+def _heuristic_classify(question: str) -> tuple:
     q = question.lower()
     scores = {"code": 0.0, "math": 0.0, "reasoning": 0.0, "unknown": 0.25}
     if any(m in q for m in _CODE_MARKERS):
