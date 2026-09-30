@@ -48,7 +48,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 ## State / how to resume
 
 * **Branch**: `main` (merged `1c21fd5`). Next work → new `feat/*` branch.
-* **Tests**: `BACKENDS=__none__ python -m pytest -q` → `14/14` (10 API + 4 memory-learning). With core installed: `BACKENDS=cognitive_swarm`.
+* **Tests**: `BACKENDS=__none__ python -m pytest -q` → `19/19` (10 API + 4 memory + 5 judgments). With core installed: `BACKENDS=cognitive_swarm`.
 * **Roadmap**: Fase 1 DONE (learning memory). Next: Fase 2 `service/judgments/` heuristic → paraphrase benchmark (distillation gate) → curiosity ops 1–2 → recency weight → orchestrator → Jev on Juicio 1 → weekly pipeline → pilot (game/paper first; medicine triage only, late).
 * **Pending measurements** (do before building): paraphrase gap, Jev agreement/p95/calibration on own data, escalation-decay curve on any live traffic.
 
@@ -70,7 +70,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 ## Conventions
 
-* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `14/14`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved.
+* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `19/19`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved.
 * No bare answer: `Resolution(answer, confidence, sources, disagreement, trace)`.
 * No cross-repo imports, no `../` paths, no baked secrets — ever. CI-check mentally on each diff.
 * Docs: `docs/ARCHITECTURE_JUDGMENTS.md` (vision, public-safe), `docs/ROADMAP_SERVICE_PRIVATE.md` (private), `README.md`.

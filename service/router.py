@@ -55,6 +55,14 @@ class Router:
                     return t
             except Exception:
                 continue
+        # Juicio 1 via the judgments seam (heuristic now, Jev later).
+        try:
+            from .judgments import classify_question
+            t, _judgment = classify_question(question)
+            if t != TaskType.UNKNOWN:
+                return t
+        except Exception:
+            pass
         return classify_local(question)
 
     def _signature(self, question: str) -> Optional[str]:
