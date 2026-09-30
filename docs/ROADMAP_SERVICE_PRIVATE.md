@@ -2,11 +2,22 @@
 
 > Private doc. Contains warehouse/host/table names and monetization notes. Nothing public. Do not publish as-is.
 
-## 0. Current state (2026-09-18, feat/procedures-40)
+## State update (2026-09-30)
+
+* **Standalone decision**: repos never depend on each other. The `CORE_PATH` hack, `../cognitive-swarm` paths and Docker context `..` are retired. `cognitive_swarm` is an optional package (pip / PYTHONPATH); the service runs without it (memory + retrieval still serve).
+* **Fase 1 de este roadmap (procedures 80→100) DONE**: `feat/procedures-100` merged (`batch200` human diverse, 100/100 verifiable).
+* **Fase 2 (Qwen distill) DEFERRED**: paraphrase gate measured 2026-09-30 (`scripts/bench_paraphrase.py`) — regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1, adds 1 silent wrong). Gate says NO. Do not reopen without a new measurement.
+* **Fase 3 (vector scale) NOT STARTED** — needs 1000+ docs to be justified.
+* Architecture phases (separate numbering, see `docs/ARCHITECTURE_JUDGMENTS.md` §8): memoria DONE, judgments seam DONE, curiosidad DONE (op1–2), recencia DONE (peso), familias DONE (priors).
+* Branch: `main` @ `0cb8cfd`; active `feat/remediation-phase-0-auth` (`decd100`) closes auth fail-closed + leak purge + regression tests (fases 0–1 of `plan/remediacion-hallazgos.md`).
+* Tests: `BACKENDS=__none__ python -m pytest -q` → 56 passed (2026-09-30).
+* Kev-0.8B local judge measurements: Juicio-1 zero-shot on our taxonomy 0/12 (no extend); AG News pilot n=200: acc 0.900, Brier 0.176 (`scripts/pilot_agnews.py`). Remaining open item: escalation-decay curve on live traffic.
+
+## 0. Current state (2026-09-18, feat/procedures-40) — HISTORICAL
 
 * Service repo `cognitive-swarm-service` private `https://github.com/christiandavidfs/cognitive-swarm-service` `feat/procedures-40` (next merge to `main`), build mode.
 * Core `cognitive-swarm` private `1972313` + `feat/procedures-40` (give/take fix + `33` templates `40/40`, `46` patterns `184` samples `CV 0.951`).
-* Tiers: `service/app.py:141` L0 `ProcedureStore` `service/memory/procedure_store.py:7` `similarity_threshold 0.85` `config/service.yaml:80` → L1 `procedure` tier on new numbers (same `procedure_sig 6d8cef7d`, TF-IDF `0.26ms`, no load) → L2 deterministic `reasoning_primitives.py`/`student_trace.py` `100/100` verifiable → L3 `Wikidata 0.8` + `OpenAlex 0.9` + **Databricks live** `service/connectors/databricks.py:36` Statement API `warehouses/2b2636d0ca412cdb` Serverless Starter `dbc-118c13a0-9998.cloud.databricks.com`.
+* Tiers: `service/app.py` L0 `ProcedureStore` `service/memory/store.py` `similarity_threshold 0.85` → L1 procedure tier on new numbers (same `procedure_sig`, no model load) → optional deterministic backend → L3 `Wikidata 0.8` + `OpenAlex 0.9` + Databricks via `DATABRICKS_HOST` / `DATABRICKS_WAREHOUSE_ID` (not committed).
 * Databricks: `testing.testing_schema.swarm_knowledge` 7 rows, `testing.testing_schema.swarm_procedures` `100` rows (batch200 human diverse, 100/100 verifiable) (Delta), `quality_platform` bronze (`api_endpoints` etc.) + silver remain but not queried by default (scoped to `testing.swarm_*`).
 * Verified: `120/120` via `POST /resolve` `0 loads`, `POST /resolve` new numbers `88` hits `tier: procedure, trace in sources[]`, stock `moses/bear/race` `13` new `46` patterns.
 
@@ -17,7 +28,7 @@
 | `testing.*` sample (`swarm_knowledge` raw Q/A) | `testing.testing_schema.swarm_knowledge` `ISOLATED` `658fac0b` | **Private** — only via `databricks_sql` `query_template` `config/service.yaml:37` | Tier 3 source, `reliability 1.0`, `LIMIT 5` for contested `disagreement` |
 | `quality_platform` bronze/silver (`api_endpoints`, `coverage_*`) | `quality_platform.*` `OPEN` `ae811f5e` | **Private** — not in `databricks_sql` query, future `Confluence`/`Postgres` stubs | Not on hot path, for internal quality dashboards |
 | `swarm_procedures` trace lake | `testing.testing_schema.swarm_procedures` `20` rows, also `data/verified_memory.json` traces | **Private** — nothing public, `POST /resolve` returns `{sources:[{name: procedure:handshake, trace, procedure_sig}]}` internally | Procedure reuse, monetizable internally |
-| `data/verified_memory.json`, `*.pkl`, `.env`, `DATABRICKS_TOKEN` | `cognitive-swarm-service/data/` + `~/.databricks` `personal` `host=dbc-118c...` `warehouse=2b2636...` | **Private** | `.gitignore` already |
+| `data/verified_memory.json`, `*.pkl`, `.env`, `DATABRICKS_TOKEN` | `cognitive-swarm-service/data/` + operator Databricks CLI profile (host and warehouse from env only) | **Private** | `.gitignore` already |
 
 Monetize options (undecided, IA for investigation / market, all private):
 * **IA investigation** — `POST /resolve` tier `procedure` + `retrieval` with provenance as private API (investigation teams query private `swarm_knowledge` + get private `trace`).
@@ -26,12 +37,13 @@ Monetize options (undecided, IA for investigation / market, all private):
 ## 2. Reproducible quickstart (copy-paste)
 
 ```bash
-# 0. env (macOS: python → python3 already symlinked)
-cd /Users/kaizen/repos/cognitive-swarm-service
+# 0. env (macOS: python → python3 already symlinked). Core opcional: NUNCA paths ../ —
+#    el paquete `cognitive_swarm` se instala desde SU checkout local o donde esté:
+cd <service-repo-root>
 python3 -m venv .venv 2>&1 | tail -1; source .venv/bin/activate 2>&1 | head -1
 pip install -e . 2>&1 | tail -1
-pip install -e ../cognitive-swarm 2>&1 | tail -1
-# or: PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -m pytest -q  # 8/8
+# opcional, solo si el backend determinista se quiere local:
+# pip install -e <ruta-local-del-checkout-del-core>   # provee `cognitive_swarm`; nunca ../
 
 # 1. Databricks seed (needs `databricks auth login` personal, warehouse auto-start)
 python3 scripts/seed_databricks.py --verify          # swarm_knowledge 7 + procedures 1
@@ -48,10 +60,10 @@ curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -d '{"question":"What caused the fall of the Roman Empire?"}' | python3 -m json.tool
 # -> null + disagreement: economic decline vs barbarian invasions vs 395 CE
 
-# 4. Validation
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -m pytest tests/test_api_resolve.py -q  # 8/8
-PYTHONPATH=../cognitive-swarm:$PYTHONPATH python3 -c "from cognitive_swarm.evaluation.leveled_benchmark import LEVELED_PROBLEMS, check_answer; from fastapi.testclient import TestClient; import service.app as am; am._memory=None; c=TestClient(am.app); print(sum(1 for p in LEVELED_PROBLEMS if check_answer(c.post('/resolve', json={'question': p['q']}).json().get('answer'), p['a'])), '/120')"
-# -> 120/120 even with Databricks enabled
+# 4. Validation (hermético, sin core ni red)
+BACKENDS=__none__ python3 -m pytest -q   # 56 passed (2026-09-30)
+# 120/120 por POST /resolve es medición de laboratorio: requiere el paquete core
+# opcional instalado (pip, nunca ../) + BACKENDS=cognitive_swarm. No es resultado de CI.
 
 # 5. TF-IDF + Qwen distill view
 python3 scripts/distill_to_qwen.py  # CV 0.962, 33/36 routing, 20/20 novel, Qwen LoRA command
@@ -84,6 +96,6 @@ python3 scripts/generate_procedures.py  # 20/20 verifiable
 
 ## 5. Private notes (keep in this doc only)
 
-* Warehouse `2b2636d0ca412cdb` Serverless Starter `STOPPED` auto-start `10s` `PENDING→SUCCEEDED`, host `dbc-118c13a0-9998.cloud.databricks.com`, token via `databricks auth token --output json` (`gho_*` not in env). `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_HOST`, `DATABRICKS_TOKEN` (1h TTL) not committed. `SERVICE_API_KEY` for `auth.enabled:true` prod (see `config/service.yaml:88`).
+* Warehouse and host are `$DATABRICKS_WAREHOUSE_ID` and `$DATABRICKS_HOST` only — never commit them. Token via env `DATABRICKS_TOKEN` (CLI `databricks auth token` is operator opt-in, not a default). `SERVICE_API_KEY` required when `auth.enabled:true`; an empty key set fails closed (401).
 * Catalogs: `dbacademy`, `testing` `ISOLATED` `658fac0b`, `quality_platform` `ae811f5e`, `system`. `testing.testing_schema` private sample (`swarm_knowledge` 7 + `swarm_procedures` 100), `quality_platform.bronze/silver` private platform.
-* All `curl` from `~` need `python3 /Users/.../scripts/...` (zsh `python` not found before symlink fix `de875eb`). With `auth.enabled:true`, add `-H "X-API-Key: $SERVICE_API_KEY"` to `POST /resolve` (exempt `/health` `/docs`).
+* Run scripts from the service repo root (`python3 scripts/...`). With `auth.enabled:true`, add `-H "X-API-Key: $SERVICE_API_KEY"` to `POST /resolve` (exempt `/health` `/docs`).

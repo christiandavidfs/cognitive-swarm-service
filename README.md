@@ -1,28 +1,58 @@
 # Cognitive Swarm Service
 
 > POC: Cognitive Swarm as an API — patterns + truth hierarchy + procedure memory.
-> Core stays in `../cognitive-swarm` (`TruthRouter` Tiers 0-4, deterministic primitives, `Corroborator`, `VerifiedMemory`). This service adds a modular connector layer (Wikidata, OpenAlex/Semantic Scholar, Databricks, Confluence, Postgres, generic HTTP), a pluggable model registry, and procedure memory (traces, not just answers).
+> Standalone service (memory + retrieval run without a sibling checkout). Optional deterministic backends plug in via `cognitive_swarm` when that package is installed.
+>
+> License: [UNLICENSED](LICENSE) — all rights reserved until the author chooses terms.
 
-## Quick start
+## Installation
+
+Requirements: Python 3.11 or newer. The service dependencies and the test runner are declared in `pyproject.toml`.
+
+### macOS / Linux
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e .                    # service only — no sibling repos needed
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+### Windows PowerShell
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+The `.[dev]` extra installs the runtime packages (`fastapi`, `uvicorn`, `pydantic`, `httpx`, `pyyaml`, `requests`) plus `pytest`, `pytest-asyncio`, and `black`. If `pytest` or `fastapi` is missing, run the same `python -m pip install -e ".[dev]"` command from the activated virtual environment.
+
+### Quick start
+
+```bash
+# If you only need to run the API and not the tests, use: python -m pip install -e .
 
 # Optional: enable the deterministic cognitive-swarm backend (Tiers 0-2).
 # Without it the service still serves memory + retrieval.
 # pip install -e <path-to-cognitive-swarm>   # provides `cognitive_swarm`
 # BACKENDS=cognitive_swarm uvicorn service.app:app --reload --port 8000
 
-# run API (port 8000, hot path 65ms warm when L0/L2 hits, 0 model loads)
+# run API (port 8000; 0 model loads on deterministic tiers — "65ms warm" is a dated lab
+#   measurement from before the standalone split, not reproduced by CI; see README §Private roadmap)
 uvicorn service.app:app --reload --port 8000
 
 # health + single resolve
+# /health reports "backends": [] when no optional backend is installed
+# (memory + retrieval still serve; deterministic tiers need the backend).
 curl http://localhost:8000/health
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
   -d '{"question":"What does print(2+3) output?"}'
+# ^ requires the optional backend — without `cognitive_swarm` installed this
+#   returns null; only memory + retrieval answer.
 
-# factual via Tier 3 — now live on Databricks + Wikidata + LocalDocs, corroborated with provenance
+# factual via Tier 3 — corroborated with provenance (Databricks requires its env; see section below)
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
   -d '{"question":"When did the Western Roman Empire fall?"}'  # -> 476 CE, sources: local-docs + databricks:testing.swarm_knowledge:1
 
@@ -40,32 +70,26 @@ curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
 curl -X POST http://localhost:8000/jobs/debate -H 'content-type: application/json' -d '{"question":"What is 2+2?"}'
 ```
 
-## Databricks — live POC
+## Databricks
 
-Sample knowledge is seeded in `testing.testing_schema.swarm_knowledge` (7 rows) + `testing.testing_schema.swarm_procedures` (trace for handshake 47 → 1081). The service's `DatabricksSQLRetriever` (`service/connectors/databricks.py`) uses the Statement Execution API (`warehouses/2b2636d0ca412cdb` Serverless Starter, auto-start). No JDBC.
+Optional Tier 3 source. Host, warehouse id, and token come from the environment (`DATABRICKS_HOST`, `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_TOKEN`) — see `.env.example`. They are not baked into `config/service.yaml`. An unexpanded `${...}` placeholder fails closed: the connector returns no claims.
 
-```bash
-# check tables (needs `databricks auth login` or host/token via env)
-databricks tables list quality_platform bronze  # quality_platform.bronze.* (api_endpoints, etc.)
-databricks tables list testing testing_schema  # swarm_knowledge, swarm_procedures
+`databricks auth token` is opt-in only: the CLI subprocess (`auth token` / profiles sweep) runs solely when `DATABRICKS_ALLOW_CLI_TOKEN=1` (fase 5 of `plan/remediacion-hallazgos.md`, default off). Without a token, the connector fails soft — `get_claims` returns `[]`.
 
-# query via API (same as service)
-curl -s -X POST "https://dbc-118c13a0-9998.cloud.databricks.com/api/2.0/sql/statements" \
-  -H "Authorization: Bearer $(databricks auth token --output json | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"access_token\"])')" \
-  -H "Content-Type: application/json" \
-  -d '{"warehouse_id":"2b2636d0ca412cdb","statement":"SELECT * FROM testing.testing_schema.swarm_knowledge LIMIT 10","wait_timeout":"10s"}' | python3 -m json.tool
-```
+Query template (the question is escaped): `SELECT answer, source, reliability FROM ${DATABRICKS_KNOWLEDGE_TABLE} WHERE question ILIKE '%{question}%' LIMIT 5`.
 
-Config: `config/service.yaml` `connectors.databricks_sql` is `enabled:true` (host + warehouse_id baked for POC, token auto-fetched via `databricks auth token` if `DATABRICKS_TOKEN` not set). Query: `SELECT answer, source, reliability FROM testing.testing_schema.swarm_knowledge WHERE question ILIKE '%{question}%' LIMIT 5` — returns up to 5 claims for contested demo. Reliability 1.0 weight + independence bonus in `Corroborator` so `476 CE` corroborated (local-docs + Databricks) while `economic decline` vs `barbarian invasions` surfaces as `disagreement`.
-
-## Architecture (inherits `docs/ARCHITECTURE.md` truth hierarchy)
+## Architecture (see `docs/ARCHITECTURE_JUDGMENTS.md` for the full vision)
 
 ```
-POST /resolve → TruthRouter (Tier 0 memory → 1 code → 2b string → 2d reasoning → 2c math → 2 calc → 3 retrieval → 4 debate)
-              Tier 3 = pluggable Retrievers (registry, category-gated, reliability+independence weighted)
-              L1 procedure memory = question → trace skeleton (verifiable steps, e.g. handshake n=47 → n*(n-1)/2)
-              Tier 4 debate = async job queue (thinking matrix) — not on hot path
+POST /resolve
+  → memoria (service/memory/store.py — LTM verificado + procedure_sig, 0ms si hit)
+  → backends opcionales (service/backends/, orden fijo o del Director)
+  → retrieval + Corroborator (reliability + independencia + recencia, conflict honesto)
+  → none / POST /jobs/debate (async, fuera del hot path)
+L1 procedure memory = question → trace skeleton (verifiable steps, e.g. handshake n=47 → n*(n-1)/2)
 ```
+
+Nota: el diagrama histórico de “TruthRouter tiers 1–2c” está retirado; el flujo real es el de arriba.
 
 Connectors are modular: `service/connectors/` — add one file + one line in `config/service.yaml` → auto-registered. Same for models: `service/models/registry.py` — declare MLX or API model → choosable per request.
 
@@ -75,7 +99,7 @@ Connectors are modular: `service/connectors/` — add one file + one line in `co
 
 ## Private roadmap — reproducible 1→2→3
 
-> Nothing public. Monetizable, private is documented in **private** `docs/ROADMAP_SERVICE_PRIVATE.md` (warehouse/host/table names, 20→40→200 plan, 1→2→3 order, 65ms warm + 120/120 + procedure `88` same sig `6d8cef7d`). `swarm_procedures` traces, `testing.*`, `quality_platform` bronze/silver all private.
+> Pipeline notes, not a public claim. See `docs/ROADMAP_SERVICE_PRIVATE.md`. Warehouse host and id belong in env, not in this README. Laboratory numbers (`120/120`, `65ms`) are not reproduced by CI.
 
 ## Business implementations — monetizable
 
@@ -83,14 +107,30 @@ Connectors are modular: `service/connectors/` — add one file + one line in `co
 
 ## Tests & validation
 
+The default suite is hermetic: it does not require Databricks, model downloads, the optional `cognitive_swarm` package, or network access.
+
 ```bash
-pytest -q  # standalone, no network, no models
-# With the optional backend installed: BACKENDS=cognitive_swarm pytest -q
+# macOS / Linux / Git Bash
+BACKENDS=__none__ python -m pytest -q
+
+# Equivalent explicit form
+python -m pytest -q
 ```
-python3 scripts/seed_procedures.py  # Databricks 20 + local 27, verifiable
-python3 scripts/distill_to_qwen.py  # TF-IDF CV 0.962 + Qwen LoRA command
-curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' -d '{"question":"In a group of 88 people each shakes hands with every other exactly once how many handshakes?"}' | python3 -m json.tool # -> 3828 tier: procedure
+
+On Windows PowerShell, set the optional backend override before running tests:
+
+```powershell
+$env:BACKENDS = "__none__"
+python -m pytest -q
 ```
+
+The suite includes API, memory, judgment, curiosity, family, orchestration, and auth/rate-limit regression tests. If the command reports `No module named pytest` or `No module named fastapi`, activate the virtual environment and run:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Optional scripts that require the private `cognitive_swarm` package or external services are not part of the hermetic CI suite.
 
 ## Docker
 

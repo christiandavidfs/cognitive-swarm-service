@@ -39,7 +39,7 @@ def _load_builtins():
     return {
         "wikidata": WikidataRetriever,
         "openalex": OpenAlexRetriever,
-        "semantic_scholar": OpenAlexRetriever,  # alias; config can set provider: semantic_scholar
+        "semantic_scholar": OpenAlexRetriever,  # HISTORICAL ALIAS, not Semantic Scholar: name alone gives OpenAlex. Real S2 only with provider: semantic_scholar (→ SemanticScholarRetriever).
         "local_docs": LocalDocsConnector,
         "confluence": ConfluenceRetriever,
         "databricks_sql": DatabricksSQLRetriever,
@@ -49,6 +49,7 @@ def _load_builtins():
     }
 
 _BUILTINS: Optional[Dict[str, type]] = None
+_ALIAS_INFO_LOGGED = False
 
 def available_connectors() -> List[str]:
     global _BUILTINS
@@ -119,6 +120,16 @@ def build_retrievers(
             if name in ("openalex", "semantic_scholar") and isinstance(opts, dict) and opts.get("provider") == "semantic_scholar":
                 from .openalex import SemanticScholarRetriever
                 retrievers.append(SemanticScholarRetriever(**{k: v for k, v in opts.items() if k != "provider"}))
+            elif name == "semantic_scholar":
+                # One-time heads-up: this name is a historical alias — caller gets OpenAlex, not S2.
+                global _ALIAS_INFO_LOGGED
+                if not _ALIAS_INFO_LOGGED:
+                    import logging
+                    logging.getLogger(__name__).info(
+                        "Connector name 'semantic_scholar' is a historical alias — building OpenAlexRetriever. "
+                        "For real Semantic Scholar set provider: semantic_scholar.")
+                    _ALIAS_INFO_LOGGED = True
+                retrievers.append(cls(**opts))
             else:
                 retrievers.append(cls(**opts))
         except Exception as e:

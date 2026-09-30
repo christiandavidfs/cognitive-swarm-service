@@ -1,6 +1,6 @@
 # Business Implementations — Private API `POST /resolve`
 
-> Private doc. Uses `service/app.py:141` `tier: procedure|retrieval` + `trace` + `procedure_sig 6d8cef7d` + `testing.swarm_procedures 100` + `swarm_knowledge 7` (Databricks `testing` ISOLATED, `2b2636d0ca412cdb`), `Wikidata 0.8` + `OpenAlex 0.9`, `60/min` `X-API-Key` `config/service.yaml:88`. Nothing public. `120/120` `0 loads` `65ms` warm, `88` same sig proves process not data.
+> Private doc. Pipeline, not proof. Uses `POST /resolve` `tier: procedure|retrieval` + `trace` + `procedure_sig` + Databricks tables named only via env (`DATABRICKS_HOST`, `DATABRICKS_WAREHOUSE_ID` — not in this file). `Wikidata 0.8` + `OpenAlex 0.9` are priors, not calibrated rates. `60/min` when `auth.enabled:true`. Laboratory `120/120` is not a CI result.
 
 Monetization: `procedure` `$0.01` / `retrieval corroborated` `$0.03` / `disagreement` honest `$0.05` per `POST /resolve` (when `auth.enabled:true` + `SERVICE_API_KEY`).
 
@@ -17,7 +17,7 @@ Monetization: `procedure` `$0.01` / `retrieval corroborated` `$0.03` / `disagree
 ## 3. Financial Reconciliation Copilot
 * **What:** `simple_subtract` `50-22=28`, `work_inverse` `15→3 days 60 people`, `trains_meet` settlement windows.
 * **Who pays:** FinOps / banks.
-* **Why us:** `student_trace.py:25` `verify_trace` (`=` + digit) + `DatabricksSQLRetriever` hits `silver.job_runs`.
+* **Why us:** `verify_trace` (`=` + digit, in the optional core package `cognitive_swarm.tools.student_trace`) + `DatabricksSQLRetriever` hits `silver.job_runs`.
 
 ## 4. Legal Clause QA
 * **What:** `all_but` `23→8`, `stock_eggs` `12→9` → `contract all but 8 survive`.
@@ -50,7 +50,7 @@ Monetization: `procedure` `$0.01` / `retrieval corroborated` `$0.03` / `disagree
 * **Why us:** `46` patterns `184` `CV 0.951` proves structure not memorization.
 
 ## 10. API Metering (infra)
-* **What:** `X-API-Key` + `60/min` `429` `service/app.py:55`.
+* **What:** `X-API-Key` + `60/min` `429` (`service/app.py` — auth/rate-limit middleware; pure helpers `expand_api_keys` / `bucket_key` / `auth_decision`).
 * **Who pays:** All above per `tier`.
 * **Why us:** Private, monetizable, `exempt /health /docs`.
 

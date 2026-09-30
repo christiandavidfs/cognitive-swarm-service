@@ -18,6 +18,8 @@ from .contracts import SourceClaim, Verdict
 class Corroborator:
     """Aggregate clashing source claims into an honest verdict."""
 
+    # Tie-break constants, NOT calibrated estimators (fase 5, plan/remediacion-hallazgos.md):
+    # no labeled conflict dataset exists, so these values are POC priors. Do not "tune" them.
     INDEPENDENCE_BONUS = 0.5
     RECENCY_BONUS = 0.3  # anti-cutoff: fresh sources outvote stale ones on ties
 

@@ -20,9 +20,8 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # Service-owned: contracts, router, corroboration, memory, backends.
@@ -56,139 +55,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Auth + rate-limit (private, monetizable) ---
-import collections as _collections
+# --- Auth + rate-limit: moved to service/http_guard.py (fase 3 of plan/remediacion-hallazgos.md).
+# Re-exported here so existing callers/tests keep importing from service.app.
+from service.http_guard import (  # noqa: E402,F401
+    _auth_config,
+    _rate_buckets,
+    auth_decision,
+    bucket_key,
+    expand_api_keys,
+    build_auth_rate_middleware,
+)
 
-_rate_buckets: dict = {}
-_rate_lock = None
-try:
-    import threading as _thr
-    _rate_lock = _thr.Lock()
-except Exception:
-    _rate_lock = None
-
-# Cache parsed YAML so we don't re-read disk on every request. Invalidated on mtime change.
-_auth_cache: dict = {"mtime": 0.0, "config": None}
-_auth_cache_ttl_s = 30.0
-_auth_cache_ts = 0.0
-_MAX_RATE_BUCKETS = 10000
-
-
-def _sweep_rate_buckets(now: float, window: float = 60.0):
-    """Drop expired entries; cap dict size so idle keys can't grow memory unbounded."""
-    for key in list(_rate_buckets.keys()):
-        dq = _rate_buckets.get(key)
-        if dq is None:
-            continue
-        while dq and dq[0] <= now - window:
-            dq.popleft()
-        if not dq:
-            del _rate_buckets[key]
-    if len(_rate_buckets) > _MAX_RATE_BUCKETS:
-        # Evict oldest-touched buckets first (best effort)
-        for key in list(_rate_buckets.keys())[: len(_rate_buckets) - _MAX_RATE_BUCKETS]:
-            del _rate_buckets[key]
-
-
-def _auth_config():
-    global _auth_cache_ts
-    cfg_path = Path(__file__).parent.parent / "config" / "service.yaml"
-    now = time.time()
-    cached = _auth_cache.get("config")
-    if cached is not None and (now - _auth_cache_ts) < _auth_cache_ttl_s:
-        try:
-            if cfg_path.stat().st_mtime == _auth_cache.get("mtime"):
-                return cached
-        except Exception:
-            return cached
-    try:
-        import yaml
-        mtime = cfg_path.stat().st_mtime
-        data = yaml.safe_load(cfg_path.read_text()) or {}
-        auth = data.get("auth", {}) if isinstance(data, dict) else {}
-        # env expansion for keys
-        import os as _os
-        keys = auth.get("api_keys") or []
-        # handle "${VAR}" single entry
-        expanded = []
-        for k in keys:
-            if isinstance(k, str):
-                ek = _os.path.expandvars(k)
-                if ek and ek != k and "," in ek:
-                    expanded.extend([x.strip() for x in ek.split(",") if x.strip()])
-                elif ek and ek.strip() and ek != "${SERVICE_API_KEY}":
-                    expanded.append(ek.strip())
-                elif k.strip() and not k.strip().startswith("${"):
-                    expanded.append(k.strip())
-        return_cfg = {
-            "enabled": bool(auth.get("enabled", False)),
-            "keys": set(expanded),
-            "limit": int(auth.get("rate_limit_per_min", 60)),
-            "exempt": set(auth.get("exempt_paths") or ["/health", "/docs", "/openapi.json", "/redoc"]),
-        }
-        _auth_cache["mtime"] = mtime
-        _auth_cache["config"] = return_cfg
-        _auth_cache_ts = now
-        return return_cfg
-    except Exception:
-        if _auth_cache.get("config") is not None:
-            return _auth_cache["config"]
-        return {"enabled": False, "keys": set(), "limit": 60, "exempt": {"/health", "/docs", "/openapi.json", "/redoc"}}
-
-@app.middleware("http")
-async def _auth_rate_middleware(request: Request, call_next):
-    cfg = _auth_config()
-    path = request.url.path
-    if cfg["enabled"] and path not in cfg["exempt"]:
-        # API key via X-API-Key or Authorization: Bearer <key>
-        provided = request.headers.get("x-api-key") or ""
-        if not provided:
-            auth_h = request.headers.get("authorization") or ""
-            if auth_h.lower().startswith("bearer "):
-                provided = auth_h[7:].strip()
-        if not provided or (cfg["keys"] and provided not in cfg["keys"]):
-            # if keys configured, require match; if no keys configured, allow any key? For private, require at least one.
-            if cfg["keys"]:
-                return JSONResponse(status_code=401, content={"detail": "Invalid API key. Provide X-API-Key or Authorization: Bearer <key>."})
-        # rate-limit per key (or IP fallback)
-        bucket_key = provided or request.client.host if request.client else "anon"
-        now = time.time()
-        window = 60.0
-        limit = cfg["limit"]
-        # simple sliding window
-        if _rate_lock:
-            with _rate_lock:
-                dq = _rate_buckets.get(bucket_key)
-                if dq is None:
-                    dq = _collections.deque()
-                    _rate_buckets[bucket_key] = dq
-                # purge old
-                while dq and dq[0] <= now - window:
-                    dq.popleft()
-                if not dq and len(_rate_buckets) > _MAX_RATE_BUCKETS:
-                    _sweep_rate_buckets(now, window)
-                    dq = _rate_buckets.get(bucket_key)
-                    if dq is None:
-                        dq = _collections.deque()
-                        _rate_buckets[bucket_key] = dq
-                if len(dq) >= limit:
-                    return JSONResponse(status_code=429, content={"detail": f"Rate limit {limit}/min exceeded", "retry_after": int(dq[0] + window - now) + 1})
-                dq.append(now)
-        else:
-            dq = _rate_buckets.get(bucket_key)
-            if dq is None:
-                dq = _collections.deque()
-                _rate_buckets[bucket_key] = dq
-            while dq and dq[0] <= now - window:
-                dq.popleft()
-            if len(dq) >= limit:
-                return JSONResponse(status_code=429, content={"detail": f"Rate limit {limit}/min exceeded"})
-            dq.append(now)
-    response = await call_next(request)
-    # monetization header
-    if cfg["enabled"]:
-        response.headers["X-RateLimit-Limit"] = str(cfg["limit"])
-    return response
+# The lambda resolves _auth_config in THIS module's namespace at request time,
+# so monkeypatching service.app._auth_config (tests) keeps working.
+app.middleware("http")(build_auth_rate_middleware(lambda: _auth_config()))
 
 # Single shared memory + router for the hot path (ProcedureStore persists to ./data/verified_memory.json)
 _memory: Optional[ProcedureStore] = None
@@ -279,6 +159,7 @@ def health():
         "status": "ok",
         "uptime_s": round(time.time() - _start_time, 1),
         "memory_entries": mem.size(),
+        "backends": [b.name for b in get_backends(mem)],  # [] = no optional backend installed
         "hierarchy": ["memory", "executor", "string-op", "reasoning-primitives", "math-primitives", "calculator", "retrieval (Wikidata/OpenAlex/LocalDocs/Confluence/Databricks/Postgres/generic_http)", "debate (async)"],
     }
 

@@ -35,14 +35,18 @@ service/
   contracts.py        # TaskType, SourceClaim, Verdict, Resolution, Connector ABC, ResolverBackend ABC
   router.py           # Jerarquía: memoria → backends → retrieval+corroboración → none/debate
   corroboration.py    # Pesos reliability + bonus independencia; conflict honesto, nunca forzado
-  judgments/          # [Fase 2] Capa de juicios: Choice/Score/Noul (heurística → Jev)
-  orchestrator/       # [Fase 3] Modelito director: política de ruteo, tras reflejos, con fallback
+  judgments/          # [Fase 2 DONE] Capa de juicios: primitives.py (Choice/Score/Noul) + classify.py (heurística) + jev.py (Jev/Kev intercambiable, judge.backend)
+  orchestrator/       # [Fase 3, esqueleto] director.py: política de ruteo tras reflejos, fallback; política aprendida pendiente
   backends/           # Resolvedores deterministas opcionales (cognitive_swarm, reasoners destilados, …)
   memory/
     store.py          # LTM: question→trace→answer + procedure_sig + attempts/successes + prune
+    procedure_store.py # Resolución por procedure (skeleton → nuevo números, mismo sig)
+    families.py       # Familias emergentes (tipos degradados a priors, no truth)
     session.py        # STM: ring buffer por session_id, muere con la sesión
   connectors/         # Fuentes Tier 3 (wikidata, openalex, databricks, local_docs, …)
-  jobs/debate_job.py  # Debate async + consolidación STM→LTM fuera del hot path
+  jobs/
+    debate_job.py     # Debate async + consolidación STM→LTM fuera del hot path
+    curiosity.py      # Curiosidad: operadores 1–2 (mutación números/composición); op3 paráfrasis pendiente
   models/registry.py  # Modelos percepción/generación (visión, LLMs) como backends API
 ```
 
@@ -122,8 +126,9 @@ cuarentena por sitio nuevo. Outcome lento → LTM de pocos casos, altísima cali
 
 ## 8. Roadmap (revisado: el proyecto es un sistema por capas)
 
-* **Fase 1** — Memoria que aprende: `attempts/successes`, `session.py`, consolidación + poda. DONE (14 tests).
-* **Fase 2** — `judgments/` con backend heurístico (mismos resultados, nuevo seam).
-* **Fase 3** — Orquestador pequeño tras los reflejos; training = outcomes de ruteo; fallback + `unknown`.
-* **Fase 4** — Jev solo en Juicio 1; medir agreement / p95 / calibración propia.
-* **Fase 5** — Destilación semanal + piloto con outcome rápido (juego o papel); medicina solo como triaje tardío.
+* **Fase 1** — Memoria que aprende: `attempts/successes`, `session.py`, consolidación + poda. DONE (parte de la suite de 56 tests herméticos).
+* **Fase 2** — `judgments/` con backend heurístico + Jev/Kev intercambiables (`judge.backend` en `config/service.yaml`). DONE.
+* **Fase 3** — Orquestador pequeño tras los reflejos; training = outcomes de ruteo; fallback + `unknown`. Esqueleto DONE (`director.py` + tests); política aprendida con outcomes pendiente.
+* **Fase 3b (extra-tesis)** — Curiosidad DONE (operadores 1–2), recencia DONE (peso), familias emergentes DONE (degradadas a priors).
+* **Fase 4** — Jev solo en Juicio 1 (configurable vía `judge.seats`); medir agreement / p95 / calibración propia.
+* **Fase 5** — Destilación semanal + piloto con outcome rápido (juego o papel); medicina solo como triaje tardío. Gate de paráfrasis dijo NO (2026-09-30, `scripts/bench_paraphrase.py`) — destilación diferida.
