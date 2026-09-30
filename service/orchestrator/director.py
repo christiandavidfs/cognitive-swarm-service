@@ -45,17 +45,24 @@ class Director:
         tmp.write_text(json.dumps(self.stats, indent=2, ensure_ascii=False))
         tmp.replace(self.path)
 
+    @staticmethod
+    def _group_key(group) -> str:
+        """Groups are family ids (emergent) or task-type values (prior fallback)."""
+        if isinstance(group, TaskType):
+            return group.value
+        return str(group)
+
     # -- learning ------------------------------------------------------
-    def record(self, layer: str, task_type: TaskType, success: bool) -> None:
-        tt = task_type.value if isinstance(task_type, TaskType) else str(task_type)
+    def record(self, layer: str, group, success: bool) -> None:
+        tt = self._group_key(group)
         bucket = self.stats.setdefault(layer, {}).setdefault(tt, [0, 0])
         bucket[1] += 1
         if success:
             bucket[0] += 1
         self.save()
 
-    def rate(self, layer: str, task_type: TaskType) -> Optional[float]:
-        tt = task_type.value if isinstance(task_type, TaskType) else str(task_type)
+    def rate(self, layer: str, group) -> Optional[float]:
+        tt = self._group_key(group)
         bucket = (self.stats.get(layer) or {}).get(tt)
         if not bucket or bucket[1] == 0:
             return None
@@ -63,13 +70,13 @@ class Director:
         return round((bucket[0] + 1) / (bucket[1] + 2), 3)
 
     # -- policy --------------------------------------------------------
-    def order(self, layers: List[str], task_type: TaskType) -> List[str]:
+    def order(self, layers: List[str], group) -> List[str]:
         """Order candidate layers best-first. Stable + signal-free → input order."""
         if len(layers) <= 1:
             return list(layers)
         scored = []
         for i, layer in enumerate(layers):
-            r = self.rate(layer, task_type)
+            r = self.rate(layer, group)
             scored.append((r if r is not None else 0.5, -i, layer))
         # All None → all 0.5 → tie broken by original index → input order preserved.
         scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
@@ -78,8 +85,8 @@ class Director:
     def export_dataset(self) -> List[dict]:
         """Routing outcomes as training rows for the future learned director."""
         rows = []
-        for layer, by_tt in self.stats.items():
-            for tt, (ok, n) in by_tt.items():
-                rows.append({"layer": layer, "task_type": tt,
+        for layer, by_group in self.stats.items():
+            for group, (ok, n) in by_group.items():
+                rows.append({"layer": layer, "group": group,
                              "successes": ok, "attempts": n, "ts": time.time()})
         return rows

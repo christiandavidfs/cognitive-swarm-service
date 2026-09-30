@@ -42,7 +42,7 @@ class Router:
     def __init__(self, memory=None, corroborator: Optional[Corroborator] = None,
                  retrievers: Optional[List[Connector]] = None,
                  backends: Optional[List[ResolverBackend]] = None,
-                 director=None):
+                 director=None, families=None):
         self.memory = memory
         self.corroborator = corroborator or Corroborator()
         self.retrievers: List[Connector] = list(retrievers or [])
@@ -54,6 +54,13 @@ class Router:
             except Exception:
                 director = None
         self.director = director
+        if families is None:
+            try:
+                from .memory.families import FamilyStore
+                families = FamilyStore()
+            except Exception:
+                families = None
+        self.families = families
 
     def classify(self, question: str) -> TaskType:
         for backend in self.backends:
@@ -97,8 +104,13 @@ class Router:
 
         task_type = self.classify(question)
 
+        # Group: emergent family when recognized, else task type as prior.
+        # Types are hints; families are measured. Unknown + unrecognized stays
+        # ungrouped (genuinely new) and is observed for future condensation.
+        group = self._group_for(question, task_type)
+
         # Director orders backends (stats policy; signal-free → config order).
-        backends = self._order_backends(task_type)
+        backends = self._order_backends(group)
 
         # Deterministic backends in order.
         for backend in backends:
@@ -107,7 +119,7 @@ class Router:
             except Exception:
                 continue
             if ans is not None and ans.answer is not None:
-                self._record_routing(backend.name, task_type, True)
+                self._observe_solve(question, task_type, backend.name, ans)
                 if self.memory is not None:
                     try:
                         self.memory.remember(
@@ -133,7 +145,7 @@ class Router:
         if claims:
             verdict = self.corroborator.corroborate(claims)
             if verdict.status == "corroborated":
-                self._record_routing("retrieval", task_type, True)
+                self._record_routing("retrieval", group, True)
                 if self.memory is not None:
                     try:
                         self.memory.remember(
@@ -145,7 +157,7 @@ class Router:
                         pass
                 return Resolution(verdict.answer, verdict.confidence, "retrieval", "retrieval",
                                   sources=verdict.provenance, disagreement=verdict.disagreement)
-            self._record_routing("retrieval", task_type, False)
+            self._record_routing("retrieval", group, False)
             sources = [{"name": cl["sources"], "reliability": cl["best_reliability"]}
                        for cl in verdict.clusters.values()]
             return Resolution(None, verdict.confidence, "retrieval", "conflict",
@@ -153,22 +165,48 @@ class Router:
 
         return Resolution(None, 0.0, "none", "debate")
 
-    def _order_backends(self, task_type: TaskType) -> list:
+    def _group_for(self, question: str, task_type: TaskType) -> str:
+        if self.families is not None:
+            try:
+                rec = self.families.recognize(question)
+                if rec["family"] is not None:
+                    return rec["family"]
+            except Exception:
+                pass
+        return task_type.value if isinstance(task_type, TaskType) else str(task_type)
+
+    def _observe_solve(self, question: str, task_type: TaskType, layer: str, ans) -> None:
+        sig = None
+        try:
+            sig = self._signature(question)
+        except Exception:
+            pass
+        group = task_type.value if isinstance(task_type, TaskType) else str(task_type)
+        if self.families is not None:
+            try:
+                fam = self.families.observe(question, getattr(ans, "pattern", None), sig, True)
+                if fam:
+                    group = fam
+            except Exception:
+                pass
+        self._record_routing(layer, group, True)
+
+    def _order_backends(self, group: str) -> list:
         if self.director is None:
             return list(self.backends)
         try:
             names = [b.name for b in self.backends]
-            ordered = self.director.order(names, task_type)
+            ordered = self.director.order(names, group)
             by_name = {b.name: b for b in self.backends}
             return [by_name[n] for n in ordered if n in by_name]
         except Exception:
             return list(self.backends)
 
-    def _record_routing(self, layer: str, task_type: TaskType, success: bool) -> None:
+    def _record_routing(self, layer: str, group: str, success: bool) -> None:
         if self.director is None:
             return
         try:
-            self.director.record(layer, task_type, success)
+            self.director.record(layer, group, success)
         except Exception:
             pass
 
