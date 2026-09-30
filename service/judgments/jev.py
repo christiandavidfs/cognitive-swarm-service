@@ -87,9 +87,11 @@ def classify_question(question: str) -> tuple:
             "task_type": {
                 "type": "choice",
                 "instructions": "Classify the question by what solves it. "
-                                "code = running code answers it; math = arithmetic answers it; "
-                                "reasoning = a reasoning procedure answers it; "
-                                "unknown = none of the above clearly applies.",
+                                "code = running code answers it; math = PURE arithmetic expression "
+                                "with no story (calculator alone suffices, e.g. 'What is 5+3?'); "
+                                "reasoning = a story/word problem needing a procedure even when "
+                                "numbers appear (rates, handshakes, work schedules, riddles, logic); "
+                                "unknown = factual, contested, or unclear — no solver category fits.",
                 "criteria": {
                     "code": "question contains or asks about executable code output",
                     "math": "question is arithmetic with explicit numbers and operators",
