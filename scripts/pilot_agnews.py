@@ -41,12 +41,33 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=200)
     ap.add_argument("--save", default="data/agnews_kev.jsonl")
+    ap.add_argument("--judge", default="kev", choices=["kev", "opendecider"],
+                    help="kev = SystemOne HTTP (KEV_BASE_URL); opendecider = local pip model")
     args = ap.parse_args()
 
-    os.environ.setdefault("JEV_VIA", "typesafe")
-    os.environ.setdefault("TYPESAFE_BASE_URL", os.getenv("KEV_BASE_URL", "http://127.0.0.1:8019"))
-    os.environ.setdefault("TYPESAFE_API_KEY", "local")
-    from service.judgments.jev import system_one
+    if args.judge == "opendecider":
+        from opendecider import load as _od_load
+        _od_model = _od_load("manjunathshiva/opendecider-nano")
+
+        def _ask(text):
+            r = _od_model.system_one(text, {"desk": QUESTION["desk"]})
+            d = r.get("answers", r).get("desk") if isinstance(r, dict) else r.desk
+            get = (lambda k, default=None: d.get(k, default)) if isinstance(d, dict) else (lambda k, default=None: getattr(d, k, default))
+            return {"choice": get("choice"), "probabilities": get("probabilities") or {},
+                    "confidence": get("confidence", 0.0)}
+
+        ask = _ask
+        tag = "od"
+    else:
+        os.environ.setdefault("JEV_VIA", "typesafe")
+        os.environ.setdefault("TYPESAFE_BASE_URL", os.getenv("KEV_BASE_URL", "http://127.0.0.1:8019"))
+        os.environ.setdefault("TYPESAFE_API_KEY", "local")
+        from service.judgments.jev import system_one
+
+        def ask(text):
+            return system_one(state=text, questions=QUESTION)["desk"]
+
+        tag = "kev"
 
     from datasets import load_dataset
     ds = load_dataset("fancyzhx/ag_news", split=f"test[:{args.n}]")
@@ -58,7 +79,7 @@ def main():
     for i, ex in enumerate(ds):
         text, label = ex["text"][:800], LABELS[ex["label"]]
         try:
-            ans = system_one(state=text, questions=QUESTION)["desk"]
+            ans = ask(text)
         except Exception as e:
             print(f"[{i}] judge call failed: {e}")
             continue
