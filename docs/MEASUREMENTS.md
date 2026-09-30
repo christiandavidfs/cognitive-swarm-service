@@ -48,3 +48,40 @@
 * ~~Escalation-decay curve on live traffic~~ MEASURED (`scripts/pilot_pokeapi.py`, 30 Pokémon × 2 Qs × 2 rounds vs API truth): **round1 acc 60/60 memory_hits 0/60 @0.16s → round2 acc 60/60 memory_hits 60/60 @0.00s**. First direct learning-curve evidence: retrieval cost → 0 on repeat.
 * Kev fine-tune on own labels (dataset `data/agnews_kev_1000.jsonl` ready, 1000 balanced rows)
 * Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready)
+
+## 2026-10-XX · LAYA Gate A (partial, CPU, zero-shot) + Gate B tooling
+
+* **Setup**: official `laya-serve` 0.3.22 (venv `C:\venvs\laya` — Windows long-path
+  breaks torch install under the WindowsApps Python), CPU-only, checkpoint
+  `convaiinnovations/laya` (english, 421M) downloaded on first use.
+* **Harness**: `scripts/bench_laya.py` — same 12 paraphrase CASES as
+  `measure_jev_classify.py`, plus coverage@0.9 / err@0.9 per judge.
+* **Measured (zero-shot, n=12, partial before CPU latency blew the budget)**:
+  heuristic 0/12 · **LAYA zero-shot 2/12** · ensemble 2/12 (secondary=jev
+  unavailable without key → single-survivor policy, no arbiter calls fired).
+* **Latency on this box: 11–42 s/call on CPU** (vendor claims 193–464 ms on a
+  capable CPU; this machine is far below that class). Latency verdict is a
+  HARDWARE verdict, not a model verdict — re-measure on RTX 3060 or T4-class.
+* **Accuracy verdict**: matches the model card's own honest limits — base
+  checkpoints sit near chance zero-shot on typed-decisions (0.362 vendor
+  measured; we got 2/12 on OUR harder taxonomy). LAYA is a base to specialise,
+  not a zero-shot judge. **Gate A says: do not promote zero-shot** (same shape
+  as Kev's 0/12 on our taxonomy — local zero-shot judges only work on natural
+  routing tasks like AG News).
+* **Vendor claims CONFIRMED live during the run**: `act_probability: 1.0` on
+  every answer (issue #185 — no signal; adapter ignores it by default).
+* **Gate B tooling landed** (offline, no live server needed):
+  - `scripts/export_laya_jsonl.py` — labeled CSV/JSONL → LAYA fine-tune
+    records (state + taxonomy question + answer). Record shape is POC; verify
+    against the official notebook before training.
+  - `scripts/fit_laya_temperature.py` — grid-search T per
+    (question_type, option_count) minimizing ECE on a predictions JSONL;
+    emits `LAYA_TEMPERATURE=` recommendation. Smoke-tested on synthetic rows.
+* **Gate B shortcut discovered**: checkpoint `laya-typed-decisions` is already
+  fine-tuned (0.766 vs 0.362 base on the vendor benchmark) and ships in the
+  same HF repo (`subfolder="typed-decisions"`). Evaluate IT before spending
+  our own fine-tune budget; our own labels (dataset ≥400) still required for
+  our taxonomy.
+* **Open**: re-run Gate A on GPU hardware; evaluate `typed-decisions`
+  subfolder zero-shot; then temperature-fit on OUR labels; promotion rule
+  unchanged: err@θ ≤ 0.062 at coverage ≥ 0.73 (Kev baseline).

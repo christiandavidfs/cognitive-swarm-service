@@ -6,18 +6,25 @@ weak (~0.36 on the vendor's own benchmark) — the value is POST fine-tuning
 on our own labels. Vendor claims do not transfer: Gate A measures before
 anything is promoted (docs/MEASUREMENTS.md).
 
-Deployment: LAYA runs as a LOCAL sidecar speaking the SystemOne shape we
-already use (see scripts/laya_server.py). Env (never in repo):
-  LAYA_BASE_URL   default http://127.0.0.1:8021
+Deployment: OFFICIAL `laya-serve` (pip install "laya[serve]"; LAYA_PRELOAD=1 laya-serve)
+— it speaks the SAME POST /v1/systemone shape as TypeSafe Jev, so this client
+and jev.py are near-twins by design. Env (never in repo):
+  LAYA_BASE_URL   default http://127.0.0.1:8000 (laya-serve default port)
   LAYA_MODEL      default laya-en
   LAYA_TEMPERATURE  calibration knob applied to returned probs (default 1.0
                   = passthrough; <1 sharpens, >1 flattens — set from the
-                  temperature-fitting step, not by hand).
+                  temperature-fitting step, not by hand). The model card is
+                  explicit: ships over-confident (ECE 0.466 → 0.081 after
+                  per-(type,option-count) refit) — do NOT trust raw probs.
   LAYA_UNKNOWN_THRESHOLD  top-prob below this routes `unknown` (default 0.15,
                   same spirit as primitives.choose). LAYA always returns a
                   forced distribution — WE impose the unknown route; typed
                   output prevents invalid answers, it does not guarantee
                   correct judgments.
+  LAYA_HONOR_ESCALATE  default OFF. The act/escalate head carries NO usable
+                  signal (vendor issue #185: act_probability reads 1.0 for
+                  almost every input, AUROC 0.30) — gate on confidence only
+                  unless explicitly overridden.
 
 Any failure raises — the caller falls back (classify.py); a judge must never
 take down the tier.
@@ -36,7 +43,7 @@ from .primitives import Judgment
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_BASE_URL = "http://127.0.0.1:8021"
+DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 DEFAULT_MODEL = "laya-en"
 
 
@@ -113,9 +120,9 @@ def _to_judgment(ans: dict, cfg: dict) -> Judgment:
     conf = float(ans.get("confidence", 0.0))
     top = max(probs, key=probs.get) if probs else None
     unknown = top is None or top == "unknown" or probs.get(top, 0.0) < cfg["unknown_threshold"]
-    # act/escalate component of LAYA maps to the escalation gate, not to an answer
-    escalate = bool(ans.get("escalate", False))
-    if escalate:
+    # act/escalate head: ignored by default (vendor issue #185 — no usable
+    # signal). Opt-in only via LAYA_HONOR_ESCALATE=1.
+    if os.getenv("LAYA_HONOR_ESCALATE") == "1" and ans.get("escalate"):
         unknown = True
     return Judgment(kind="choice", choice=None if unknown else top,
                     probs=probs, confidence=conf, unknown=unknown)

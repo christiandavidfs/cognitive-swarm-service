@@ -59,9 +59,16 @@ def test_laya_unknown_imposed_below_threshold(monkeypatch):
     assert t == TaskType.UNKNOWN and j.unknown
 
 
-def test_laya_escalate_flag_routes_unknown(monkeypatch):
+def test_laya_escalate_ignored_by_default_gated_when_optin(monkeypatch):
     monkeypatch.setenv("JUDGE", "laya")
     monkeypatch.delenv("JUDGE_ADJUDICATE", raising=False)
+    # Vendor issue #185: act/escalate head carries no signal → ignored by default
+    with patch("service.judgments.laya.requests.post",
+               return_value=_R(_resp({"reasoning": 0.95}, 0.95, escalate=True))):
+        t, j = classify_question("anything")
+    assert t == TaskType.REASONING and not j.unknown
+    # Opt-in restores the gate
+    monkeypatch.setenv("LAYA_HONOR_ESCALATE", "1")
     with patch("service.judgments.laya.requests.post",
                return_value=_R(_resp({"reasoning": 0.95}, 0.95, escalate=True))):
         t, j = classify_question("anything")

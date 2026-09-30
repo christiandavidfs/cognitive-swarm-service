@@ -5,10 +5,10 @@ Same harness as measure_jev_classify.py so numbers are comparable:
   accuracy per judge | agreement | disagreements→escalations | coverage@0.9
   | err@conf>=0.9 | latency mean/p95.
 
-Needs the local LAYA sidecar running (scripts/laya_server.py) and, for the
-secondary/arbiter legs, the usual Jev config (local Kev on :8019 or TypeSafe).
+Needs the OFFICIAL laya server up (pip install "laya[serve]"; LAYA_PRELOAD=1 laya-serve)
+and, for the secondary/arbiter legs, the usual Jev config (local Kev on :8019 or TypeSafe).
 
-  LAYA_BASE_URL=http://127.0.0.1:8021 python scripts/bench_laya.py
+  LAYA_BASE_URL=http://127.0.0.1:8000 python scripts/bench_laya.py
   # optional: LAYA_SECONDARY=jev + TYPESAFE_API_KEY / Kev base_url
 
 Decision rule (Gate A, docs/MEASUREMENTS.md):
@@ -49,7 +49,7 @@ def _err_at_threshold(rows, label):
 
 def main():
     if not os.getenv("LAYA_BASE_URL"):
-        os.environ.setdefault("LAYA_BASE_URL", "http://127.0.0.1:8021")
+        os.environ.setdefault("LAYA_BASE_URL", "http://127.0.0.1:8000")
     from service.judgments.laya import timed_classify
     from service.judgments.adjudicate import adjudicated_classify
 
@@ -62,7 +62,7 @@ def main():
         try:
             lt, lj, dt = timed_classify(q)
         except Exception as e:
-            print(f"LAYA sidecar call failed (is scripts/laya_server.py up?): {e}")
+            print(f"laya-serve call failed (is `laya-serve` up?): {e}")
             return
         try:
             adj = adjudicated_classify(q)
@@ -84,7 +84,7 @@ def main():
     esc = sum(r["src"] == "arbiter" for r in rows)
     lat = [r["lat"] for r in rows]
     print(f"\nn={n}  heuristic {h_ok}/{n}  laya {l_ok}/{n}  ensemble {a_ok}/{n}")
-    print(f"heuristic↔laya disagreements: {dis}  arbiter escalations: {esc}")
+    print(f"heuristic-vs-laya disagreements: {dis}  arbiter escalations: {esc}")
     print(f"latency mean {statistics.mean(lat):.3f}s "
           f"p95 {sorted(lat)[min(n - 1, int(n * 0.95))]:.3f}s")
     print("coverage/err at automated threshold:")

@@ -18,11 +18,13 @@ _REPO = _P(__file__).resolve().parent.parent
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
+# CASES is plain domain data — importable WITHOUT the optional cognitive-swarm
+# package (bench_laya.py reuses it). The heavy imports live inside main().
 try:
-    from cognitive_swarm.tools.reasoning_primitives import detect_reasoning_pattern
-    from cognitive_swarm.tools.student_router import predict
+    from cognitive_swarm.tools.reasoning_primitives import detect_reasoning_pattern  # noqa: F401
+    from cognitive_swarm.tools.student_router import predict  # noqa: F401
 except ImportError:
-    raise SystemExit("Needs the optional cognitive-swarm package (see README).")
+    detect_reasoning_pattern = predict = None
 
 # (question, expected_pattern) — rewordings preserve semantics (incl. tricks).
 CASES = [
