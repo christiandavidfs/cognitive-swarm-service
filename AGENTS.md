@@ -49,7 +49,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 * **Branch**: `main` (merged `1c21fd5`). Next work → new `feat/*` branch.
 * **Tests**: `BACKENDS=__none__ python -m pytest -q` → `24/24` (12 API + 4 memory + 5 judgments + 3 curiosity). With core installed: `BACKENDS=cognitive_swarm`.
-* **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam). Next: curiosity ops 1–2 → recency weight → orchestrator → Jev on Juicio 1 → weekly pipeline → pilot.
+* **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam). Next: orchestrator → Jev on Juicio 1 → Jev on Juicio 1 → weekly pipeline → pilot.
 * **Pending measurements**: paraphrase gap MEASURED 2026-09-30 (`scripts/bench_paraphrase.py`): regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1 miss, adds 1 silent wrong: simple_subtract→take_away). GATE SAYS NO — distillation pipeline deferred until student shows ~zero silent wrongs. Remaining: Jev agreement/p95/calibration on own data, escalation-decay curve on live traffic.
 
 ## Private — nothing public
