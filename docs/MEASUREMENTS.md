@@ -36,8 +36,8 @@
 * **Verdict**: Kev keeps the judge seat; OpenDecider relegated to cheap bulk pre-screen (20× faster, worse calibration — err 0.095 unfit for auto-routing). Vendor claim (OD > Jev) does not transfer to our tasks.
 * **Method lesson**: `--judge` harness accepts any future candidate with zero new code. Measure, don't trust.
 
-## Open gates
+## Open gates (one closed 2026-09-30)
 
-* Escalation-decay curve on live traffic (needs traffic — the mother metric, still unmeasured)
-* Kev fine-tune on own labels (needs dataset ≥400 rows; AG News JSONL regenerable at any n)
+* ~~Escalation-decay curve on live traffic~~ MEASURED (`scripts/pilot_pokeapi.py`, 30 Pokémon × 2 Qs × 2 rounds vs API truth): **round1 acc 60/60 memory_hits 0/60 @0.16s → round2 acc 60/60 memory_hits 60/60 @0.00s**. First direct learning-curve evidence: retrieval cost → 0 on repeat.
+* Kev fine-tune on own labels (dataset `data/agnews_kev_1000.jsonl` ready, 1000 balanced rows)
 * Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready)
