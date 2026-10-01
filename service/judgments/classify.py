@@ -30,6 +30,13 @@ def classify_question(question: str) -> tuple:
             return _jev_classify(question)
         except Exception:
             pass
+    if os.getenv("JUDGE_ADJUDICATE", "0") == "1":
+        try:
+            from .adjudicate import adjudicated_classify
+            adj = adjudicated_classify(question)
+            return adj.task_type, adj.judgment
+        except Exception:
+            pass
     return _heuristic_classify(question)
 
 

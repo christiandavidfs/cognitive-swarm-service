@@ -14,10 +14,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from .adjudicate import Adjudication, adjudicated_classify
+from .calibration import apply_temperature, ece, fit, fit_per_group, nll, temperature_for
 from .classify import classify_question
 from .primitives import Judgment, choose, noul, score_judgment
 
-__all__ = ["classify_question", "configure", "Judgment", "choose", "noul", "score_judgment"]
+__all__ = ["Adjudication", "adjudicated_classify", "apply_temperature",
+           "classify_question", "configure", "ece", "fit", "fit_per_group",
+           "nll", "temperature_for", "Judgment", "choose", "noul", "score_judgment"]
 
 SERVICE_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "service.yaml"
 
