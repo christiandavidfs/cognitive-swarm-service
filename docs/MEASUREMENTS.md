@@ -58,6 +58,12 @@
 ## Open gates
 
 * Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
+* **Longitudinal learning proof** (PENDING 2026-10-01): fixed versioned question set incl. today-unanswerable (`conflict`/`none`) items, re-asked weekly via scheduler; track accuracy + conflict-resolution over time. Needs: cron line, evolving ground-truth set, curve plot. Design fits as-is.
+* **Paper-trading pilot** (PENDING 2026-10-01): user-defined 2–3 setups, Yahoo Finance streaming loop, paper accounting (positions, costs, net P&L vs buy-and-hold), 4–8 weeks observation. Missing: streaming loop + accounting harness (real build) + setups (user). No shortcuts: without costs it's fiction.
+* Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
+* Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
+
+* Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
 * ~~Retrieval-at-scale with distractors~~ MEASURED (see above; solo-voice hole fixed).
 * Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
 * Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
