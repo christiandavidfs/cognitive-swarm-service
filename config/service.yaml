@@ -63,7 +63,11 @@ connectors:
     base_url: "${CONFLUENCE_BASE_URL}"
     # space, auth via CONFLUENCE_API_TOKEN env
   databricks_sql:
-    enabled: true
+    enabled: false   # needs DATABRICKS_HOST/WAREHOUSE_ID/TOKEN (see .env.example).
+    # Disabled 2026-10-01: without creds it fails closed ([]) while spawning
+    # a token subprocess per minute — cost without contribution. All measured
+    # pilots run without it. Flip to true after `databricks auth login` +
+    # `python scripts/seed_databricks.py --verify`.
     reliability: 1.0
     warehouse_id: "${DATABRICKS_WAREHOUSE_ID}"
     host: "${DATABRICKS_HOST}"
