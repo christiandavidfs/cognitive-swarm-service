@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "data"
 
 BOARDS = {
     "longitudinal": "longitudinal_log.jsonl",
