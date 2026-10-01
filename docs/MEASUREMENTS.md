@@ -65,18 +65,16 @@
 * Dry run 2× same day: cold acc=0.0 → populated acc=1.0, stale=0 (market static intraday — staleness appears across weeks, which is the point).
 * Timer Wednesdays 06:00 (interleaved). Metric to watch: stale_rate decay with acc steady.
 
-* Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
-* **Longitudinal learning proof** (runner + v1 set DONE 2026-10-01, baseline acc=0.50): needs cron activation + evolving ground-truth set + curve plot.
-* **Paper-trading pilot** (PENDING 2026-10-01): user-defined 2–3 setups, Yahoo Finance streaming loop, paper accounting (positions, costs, net P&L vs buy-and-hold), 4–8 weeks observation. Missing: streaming loop + accounting harness (real build) + setups (user). No shortcuts: without costs it's fiction.
-* Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
-* Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
+## Open gates
 
-* Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
-* ~~Retrieval-at-scale with distractors~~ MEASURED (see above; solo-voice hole fixed).
+* Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
+* ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
+* **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
+* **Market longitudinal** (runner + Wed timer DONE 2026-10-01): watch stale_rate decay with acc steady.
+* **Paper-trading pilot** (PENDING): user-defined 2–3 setups, streaming loop, paper accounting (positions, costs, net P&L vs buy-and-hold), 4–8 weeks. Without costs it's fiction.
 * Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
 * Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
-* Federated process learning PoC (two local instances sharing only `procedure_sig`s; needs partner or self-simulation).
-* Serving persistence: demo :8000 + Kev :8019/:8020 run via nohup (die on restart); docker-compose doesn't include the judge; FT checkpoint lives only in `kev-local/runs/`. Promote judge defaults in `config/service.yaml` when ready. (one closed 2026-09-30)
+* Federated process learning PoC (two local instances sharing only `procedure_sig`s).
 
 * ~~Escalation-decay curve on live traffic~~ MEASURED (`scripts/pilot_pokeapi.py`, 30 Pokémon × 2 Qs × 2 rounds vs API truth): **round1 acc 60/60 memory_hits 0/60 @0.16s → round2 acc 60/60 memory_hits 60/60 @0.00s**. First direct learning-curve evidence: retrieval cost → 0 on repeat.
 * Kev fine-tune on own labels (dataset `data/agnews_kev_1000.jsonl` ready, 1000 balanced rows)
