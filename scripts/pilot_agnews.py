@@ -88,6 +88,16 @@ def main():
         probs = {k: float(v) for k, v in (ans.get("probabilities") or {}).items()}
         choice = ans.get("choice")
         conf = float(ans.get("confidence", 0.0))
+        # Post-hoc temperature (JUDGE_TEMPERATURE, fitted on held-out): argmax never moves.
+        try:
+            _t = float(os.getenv("JUDGE_TEMPERATURE", "1.0"))
+        except ValueError:
+            _t = 1.0
+        if probs and abs(_t - 1.0) > 1e-9:
+            from service.judgments.jev import _rescale
+            from service.judgments.primitives import _concentration
+            probs = _rescale(probs, _t)
+            conf = _concentration(probs)
         p_true = probs.get(label, 0.0)
         brier += (1.0 - p_true) ** 2 + sum(p * p for k, p in probs.items() if k != label)
         correct += choice == label

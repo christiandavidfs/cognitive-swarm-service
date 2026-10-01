@@ -18,6 +18,7 @@ judge:
   base_url: ""          # override: e.g. http://127.0.0.1:8019 (local Kev)
   model: ""             # override: e.g. kev-latest | typesafe-ai/jev
   api_key_env: ""       # env var holding the key (default per via)
+  temperature: 1.0      # post-hoc scaling, fitted on held-out (Kev-AGNews: 1.9)
   seats:                # per-decision override (Fase 4+); classify is live today
     classify: heuristic
 
