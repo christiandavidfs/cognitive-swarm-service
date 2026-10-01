@@ -1,0 +1,10 @@
+[Unit]
+Description=Formation predictions (Fridays after close)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/kaizen/repos/cognitive-swarm-service
+Environment=BACKENDS=__none__
+ExecStart=/home/linuxbrew/.linuxbrew/bin/python3 scripts/formations_market.py
+StandardOutput=append:/home/kaizen/repos/cognitive-swarm-service/data/formations_cron.log
+StandardError=append:/home/kaizen/repos/cognitive-swarm-service/data/formations_cron.log
