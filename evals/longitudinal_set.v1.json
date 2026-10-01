@@ -1,0 +1,8 @@
+{"version": 1, "items": [
+  {"q": "What type is pikachu?", "a": "electric", "kind": "retrieval"},
+  {"q": "How tall is snorlax?", "a": "21", "kind": "retrieval"},
+  {"q": "What does print(2+3) output?", "a": "5", "kind": "deterministic"},
+  {"q": "In a group of 12 people each shakes hands with every other exactly once how many handshakes?", "a": "66", "kind": "procedure"},
+  {"q": "What caused the fall of the Roman Empire?", "a": null, "kind": "contested"},
+  {"q": "What is the capital of France?", "a": "Paris", "kind": "retrieval"}
+]}

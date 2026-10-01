@@ -55,7 +55,9 @@
 * round1: acc=1.0 memory=0.00 retrieval=1.00 lat=0.147s · round2: 1.0 / 0.20 / 0.80 · round3: 1.0 / 0.36 / 0.64 (entries 20→40→56)
 * The escalation-decay curve exists over time, not just r1-vs-r2: retrieval share falls as memory absorbs repeats. Accuracy never moves. Log in `data/rounds_log.jsonl` for plotting.
 
-## Open gates
+## 2026-10-01 · Longitudinal baseline (`scripts/longitudinal.py`, `evals/longitudinal_set.v1.json`)
+
+* 2026-10-01 v1 (core backend, no network sources): acc=0.50 answered=0.50 contested_ok=1. Cron-ready (line in script docstring). Future runs must show acc↑ via memory+retrieval — that slope IS the "learn for real" proof.
 
 * Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
 * **Longitudinal learning proof** (PENDING 2026-10-01): fixed versioned question set incl. today-unanswerable (`conflict`/`none`) items, re-asked weekly via scheduler; track accuracy + conflict-resolution over time. Needs: cron line, evolving ground-truth set, curve plot. Design fits as-is.
