@@ -13,7 +13,7 @@ service:
 # Switch judges per need without touching code: local Kev for free/private,
 # paid Jev for max accuracy, heuristic when offline.
 judge:
-  backend: heuristic
+  backend: heuristic   # default stays offline-safe. Production blocks below.
   jev_via: typesafe     # typesafe | vercel
   base_url: ""          # override: e.g. http://127.0.0.1:8019 (local Kev)
   model: ""             # override: e.g. kev-latest | typesafe-ai/jev
@@ -21,6 +21,12 @@ judge:
   temperature: 1.0      # post-hoc scaling, fitted on held-out (Kev-AGNews: 1.9)
   seats:                # per-decision override (Fase 4+); classify is live today
     classify: heuristic
+  # Production (promoted 2026-09-30, MEASUREMENTS.md): fine-tuned judge + T=1.9.
+  # Serve via scripts/serve_all.sh, then flip this block on:
+  # backend: jev
+  # base_url: "http://127.0.0.1:8020"
+  # model: "kev-latest"
+  # temperature: 1.9
 
 # Resolver backends — optional deterministic solvers, tried in order.
 # Each name loads service/backends/<name>.py; missing backends are skipped
