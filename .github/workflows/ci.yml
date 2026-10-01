@@ -9,5 +9,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install fastapi "uvicorn[standard]" pydantic pydantic-settings httpx pyyaml requests pytest pytest-asyncio
-      - run: python -m py_compile service/app.py service/http_guard.py service/contracts.py service/router.py service/corroboration.py service/backends/*.py service/connectors/*.py service/memory/*.py service/models/*.py service/jobs/*.py service/judgments/*.py service/orchestrator/*.py tests/*.py
+      - run: python -m py_compile service/app.py service/http_guard.py service/contracts.py service/router.py service/corroboration.py service/backends/*.py service/connectors/*.py service/memory/*.py service/models/*.py service/jobs/*.py service/judgments/*.py service/orchestrator/*.py service/results.py tests/*.py scripts/*.py
+      - run: "! grep -rn '^from typing [a-zA-Z]' service tests scripts | grep -v __pycache__ | grep -v 'from typing import'"
       - run: BACKENDS=__none__ python -m pytest -q

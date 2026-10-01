@@ -38,7 +38,6 @@ from service.models.registry import list_models, available_models
 from service.judgments import configure as configure_judge
 
 configure_judge()  # [judge] in config/service.yaml → env (explicit env wins)
-
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -195,6 +194,24 @@ def memory_stats():
     for e in mem.entries.values():
         by_tier[e.get("tier", "unknown")] = by_tier.get(e.get("tier", "unknown"), 0) + 1
     return {"total_entries": mem.size(), "by_tier": by_tier, "path": str(mem.path)}
+
+@app.get("/results")
+def results():
+    from service.results import summary
+    return summary()
+
+@app.get("/results/{name}")
+def results_board(name: str):
+    from service.results import board, BOARDS
+    if name not in BOARDS:
+        raise HTTPException(404, detail=f"unknown board {name!r}. Available: {sorted(BOARDS)}")
+    return board(name)
+
+@app.get("/board", response_class=None)
+def board_html():
+    from fastapi.responses import HTMLResponse
+    from service.results import render_html
+    return HTMLResponse(render_html())
 
 @app.post("/resolve", response_model=ResolveResponse)
 def resolve(req: ResolveRequest):
