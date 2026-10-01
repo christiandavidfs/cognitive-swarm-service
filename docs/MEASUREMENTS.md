@@ -43,10 +43,17 @@
 * Reading: accuracy AND Brier improve, but automation error worsens (0.061→0.087) — temperature unfitted (1.00 vs base 2.35), i.e. overconfident. The recipe's prescribed next step (fit temperature on heldout) directly addresses it.
 * **Verdict**: MIXED → PROMOTED after temperature refit. T=1.9 fitted on slice `test[1000:1200]`, validated on fresh `test[1200:1400]`: acc 0.925, Brier 0.127, operating point moved to T=0.7 → **139/200 automated (70%) err=0.036** (inside 5% budget). `judge.temperature: 1.9` in config. First complete learn→train→calibrate→measure loop: the machinery works end to end.
 
+## 2026-10-01 · Retrieval-at-scale (`scripts/pilot_retrieval_scale.py`, 2000 distractors + 2 golden)
+
+* Gold HIT+RIGHT 2/2 at every threshold 0.2–0.5 (buried gold is found).
+* 1/2 negatives leaks at ALL thresholds: fictional-planet question hits a Saturn-moons article (overlap 0.60) — lexical ceiling, no threshold fixes meaning-blindness.
+* **Fix shipped**: lone-voice corroboration now requires reliability ≥ 0.9 OR ≥2 independent voices (`SOLO_RELIABILITY`, `service/corroboration.py`). Lexical solo hits → `uncertain` (answer attached, unclaimed); exact solo sources (PokeAPI 0.95) still corroborate. `41/41` green.
+* Threshold 0.35 stands. Semantic retrieval (vectors/rerank) remains the real fix — deferred per freeze rule until a gate demands it.
+
 ## Open gates
 
 * Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
-* Retrieval-at-scale with distractors (PENDING per 2026-10-01): real noisy corpus (repo docs + Wikipedia slice) measuring HIT-rate + false-hits + threshold tuning. Toy corpora don't count as evidence.
+* ~~Retrieval-at-scale with distractors~~ MEASURED (see above; solo-voice hole fixed).
 * Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
 * Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
 * Federated process learning PoC (two local instances sharing only `procedure_sig`s; needs partner or self-simulation).
