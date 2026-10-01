@@ -20,6 +20,10 @@ class Corroborator:
 
     INDEPENDENCE_BONUS = 0.5
     RECENCY_BONUS = 0.3  # anti-cutoff: fresh sources outvote stale ones on ties
+    # A lone voice corroborates only when highly reliable (exact APIs, DBs).
+    # Lexical single-hits (local-docs 0.8) stay uncertain — measured 2026-10-01:
+    # a Saturn-moons article "answered" a fictional-planet question at 0.60 overlap.
+    SOLO_RELIABILITY = 0.9
 
     def corroborate(self, claims: List[SourceClaim]) -> Verdict:
         if not claims:
@@ -53,7 +57,15 @@ class Corroborator:
         best = clusters[best_key]
         majority_share = best["weight"] / total_weight if total_weight else 0.0
 
-        corroborated = best["independent_count"] >= 1 and majority_share >= 0.6
+        corroborated = (
+            best["independent_count"] >= 1
+            and majority_share >= 0.6
+            and (
+                best["independent_count"] >= 2  # two independent voices agree
+                or len(clusters) > 1  # contested but winner dominates
+                or best["best_reliability"] >= self.SOLO_RELIABILITY  # lone exact source
+            )
+        )
         confidence = round(0.5 * majority_share + 0.5 * best["best_reliability"], 3)
 
         disagreement = [
