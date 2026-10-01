@@ -59,7 +59,11 @@
 
 * 2026-10-01 v1 (core backend, no network sources): acc=0.50 answered=0.50 contested_ok=1. Cron-ready (line in script docstring). Future runs must show acc↑ via memory+retrieval — that slope IS the "learn for real" proof.
 
-## Open gates
+## 2026-10-01 · Market longitudinal (`scripts/longitudinal_market.py`, Yahoo no-key)
+
+* Static PokeAPI measures accumulation; market truth MOVES — this measures the UPDATE loop: stale memory detected, demoted via `record_outcome(False)`, corrected by fresh truth.
+* Dry run 2× same day: cold acc=0.0 → populated acc=1.0, stale=0 (market static intraday — staleness appears across weeks, which is the point).
+* Timer Wednesdays 06:00 (interleaved). Metric to watch: stale_rate decay with acc steady.
 
 * Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
 * **Longitudinal learning proof** (runner + v1 set DONE 2026-10-01, baseline acc=0.50): needs cron activation + evolving ground-truth set + curve plot.

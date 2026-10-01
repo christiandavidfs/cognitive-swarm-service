@@ -1,0 +1,6 @@
+{"version": 1, "note": "Ground truth is computed live at runtime (it changes). Never hardcode answers here.",
+  "symbols": ["AAPL", "MSFT", "SPY"],
+  "templates": [
+    {"kind": "direction", "q": "Did {sym} rise this week?", "answers": ["yes", "no"]},
+    {"kind": "above_ma50", "q": "Is {sym} above its 50-day average?", "answers": ["yes", "no"]}
+  ]}
