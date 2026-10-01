@@ -71,6 +71,12 @@ connectors:
     enabled: false
     reliability: 0.6
     base_url: "${GENERIC_HTTP_BASE_URL}"
+  # Free ground-truth demo source (no key). Per-request `connectors:["pokeapi"]`
+  # or flip enabled:true. Proves the one-file connector pattern live.
+  pokeapi:
+    enabled: false
+    reliability: 0.95
+    timeout_s: 8
 
 # Model registry — choosable per request via `models: ["phi","qwen","minimax-m3",...]`
 # type: mlx | api (openai-compatible). MLX models load sequentially on 8GB (one at a time).
