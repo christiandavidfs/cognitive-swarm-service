@@ -1,0 +1,6 @@
+[Unit]
+Description=Longitudinal Monday reminder (desktop notification)
+
+[Service]
+Type=oneshot
+ExecStart=/home/kaizen/repos/cognitive-swarm-service/scripts/longitudinal_notify.sh
