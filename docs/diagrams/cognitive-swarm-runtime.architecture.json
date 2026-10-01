@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Cognitive Swarm Service — Arquitectura runtime",
+    "output": "cognitive-swarm-runtime.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/christiandavidfs/cognitive-swarm-service",
+      "revision": "7ec943ba21c8c124ade6de70060837c002112f7e"
+    },
+    "views": [
+      { "id": "main-path", "label": "Camino principal", "focus": ["client", "guard", "api", "router", "memory", "solvers", "corrob"], "note": "Cascada de tiers: memoria exacta → determinista → corroborada." },
+      { "id": "judge-seats", "label": "Asientos del juez", "focus": ["router", "judge", "laya", "jev"], "note": "Seam intercambiable heuristic/LAYA/Jev detrás de judge.backend." },
+      { "id": "async-learning", "label": "Aprendizaje async", "focus": ["corrob", "jobs", "memory"], "note": "Debate y curiosidad fuera del hot path; solo outcomes verificados se archivan." }
+    ]
+  },
+  "components": [
+    { "id": "client", "type": "external", "label": "Clientes API", "pos": [40, 320], "size": [130, 64] },
+    { "id": "guard", "type": "security", "label": "http_guard", "sublabel": "auth + rate limit", "pos": [210, 320], "size": [130, 64], "tag": "60/min por key", "sources": [{ "path": "service/http_guard.py" }] },
+    { "id": "api", "type": "backend", "label": "FastAPI app", "sublabel": "POST /resolve", "pos": [390, 320], "size": [130, 64], "sources": [{ "path": "service/app.py" }] },
+    { "id": "router", "type": "backend", "label": "Router / Director", "sublabel": "jerarquía de tiers", "pos": [570, 320], "size": [140, 64], "sources": [{ "path": "service/router.py" }] },
+    { "id": "memory", "type": "database", "label": "Memoria de proceso", "sublabel": "LTM + STM", "pos": [750, 320], "size": [140, 64], "tag": "procedure_sig", "sources": [{ "path": "service/memory/store.py" }, { "path": "service/memory/session.py" }] },
+    { "id": "solvers", "type": "backend", "label": "Backends deterministas", "sublabel": "Tier 1 (opcional)", "pos": [940, 320], "size": [150, 64], "sources": [{ "path": "service/backends/cognitive_swarm.py" }] },
+    { "id": "corrob", "type": "backend", "label": "Recuperación + Corroboración", "sublabel": "Tier 3", "pos": [1130, 320], "size": [190, 64], "sources": [{ "path": "service/corroboration.py" }] },
+    { "id": "judge", "type": "backend", "label": "Juez (asientos 1–5)", "sublabel": "seam intercambiable", "pos": [570, 140], "size": [150, 64], "tag": "judge.backend", "sources": [{ "path": "service/judgments/primitives.py" }, { "path": "service/judgments/classify.py" }] },
+    { "id": "laya", "type": "external", "label": "laya-serve", "sublabel": "juez open-weights local", "pos": [760, 140], "size": [140, 64], "tag": "Apache 2.0", "sources": [{ "path": "service/judgments/laya.py" }] },
+    { "id": "jev", "type": "external", "label": "TypeSafe Jev API", "sublabel": "juez gestionado", "pos": [760, 30], "size": [140, 64], "sources": [{ "path": "service/judgments/jev.py" }] },
+    { "id": "extapis", "type": "external", "label": "Fuentes externas", "sublabel": "Wikidata · OpenAlex · Databricks", "pos": [1130, 500], "size": [190, 64], "sources": [{ "path": "service/connectors/registry.py" }] },
+    { "id": "jobs", "type": "messagebus", "label": "Jobs async", "sublabel": "debate · curiosidad", "pos": [890, 500], "size": [150, 64], "sources": [{ "path": "service/jobs/debate_job.py" }, { "path": "service/jobs/curiosity.py" }] }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "Perímetro autenticado — X-API-Key/Bearer · 429 con Retry-After", "wraps": ["guard", "api"] },
+    { "kind": "region", "label": "Proceso local — LTM y trazas privadas nunca salen", "wraps": ["api", "router", "memory", "judge", "solvers", "corrob", "jobs", "laya"] }
+  ],
+  "connections": [
+    { "id": "c-g", "from": "client", "to": "guard", "label": "POST /resolve · X-API-Key", "variant": "emphasis", "labelDy": 62 },
+    { "id": "g-a", "from": "guard", "to": "api", "label": "solo autenticados", "labelDy": 62 },
+    { "id": "a-r", "from": "api", "to": "router", "label": "jerarquía de tiers", "labelDy": 62 },
+    { "id": "r-mem", "from": "router", "to": "memory", "label": "Tier 0 · exacta", "labelDy": 62 },
+    { "id": "mem-sol", "from": "memory", "to": "solvers", "label": "miss → Tier 1", "labelDy": 62 },
+    { "id": "sol-cor", "from": "solvers", "to": "corrob", "label": "miss → Tier 3", "labelDy": -33 },
+    { "id": "r-judge", "from": "router", "to": "judge", "label": "asientos 1–5", "fromSide": "top", "toSide": "bottom" },
+    { "id": "judge-laya", "from": "judge", "to": "laya", "label": "local", "labelDy": -22 },
+    { "id": "judge-jev", "from": "judge", "to": "jev", "label": "pagado", "variant": "dashed", "fromSide": "top", "toSide": "bottom" },
+    { "id": "cor-ext", "from": "corrob", "to": "extapis", "label": "conectores L3", "fromSide": "bottom", "toSide": "top", "labelAt": [1150, 468] },
+    { "id": "cor-jobs", "from": "corrob", "to": "jobs", "label": "conflicto / none", "variant": "dashed", "fromSide": "bottom", "toSide": "right" },
+    { "id": "jobs-mem", "from": "jobs", "to": "memory", "label": "remember_trace verificado", "variant": "dashed", "fromSide": "left", "toSide": "bottom" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Cascada de tiers (camino principal)", "items": [
+      "Tier 0: memoria exacta por procedure_sig (threshold 0.85) — sin modelo en el hot path",
+      "Tier 1: resolvedores deterministas opcionales (BACKENDS=cognitive_swarm)",
+      "Tier 3: recuperación local + corroboración multi-fuente",
+      "Sin bare answer: siempre Resolution(answer, confidence, sources, disagreement, trace)"
+    ] },
+    { "dot": "emerald", "title": "Asientos del juez", "items": [
+      "5 asientos entre tiers: 1 classify · 2 escalate · 3 adjudicate · 4 verify_trace · 5 select_backend",
+      "Intercambiables sin tocar código: heuristic | jev (Kev/Jev/Vercel) | laya",
+      "LAYA open-weights (421M): unknown impuesto por el adaptador; temperatura post-calibración obligatoria",
+      "Juicio 3 dual-judge (consenso min-conf, conflicto → árbitro): JUDGE_ADJUDICATE=1, OFF por defecto"
+    ] },
+    { "dot": "violet", "title": "Memoria que aprende", "items": [
+      "procedure_sig = firma sin números: la forma sobrevive, los datos no se copian",
+      "Contadores monotónicos attempts/successes + record_outcome + prune",
+      "Ratchet versionado: la LTM nunca olvida ni regresa; los modelos sí pueden",
+      "Solo se archivan pasos con outcome conocido (los fallos cuentan, no se enshrinen)"
+    ] },
+    { "dot": "amber", "title": "Trabajo asíncrono", "items": [
+      "debate_job: nunca en el hot path; verifica vía backends antes de remember_trace",
+      "curiosity op 1–2: mutación + novedad por sig; budget diario; apunta a ignorancia (attempts/successes)",
+      "La expansión BFS por fuentes vive en el corpus de recuperación, jamás contamina la LTM determinista"
+    ] },
+    { "dot": "rose", "title": "Confianza y datos", "items": [
+      "Auth fail-closed: keys vacías → 401 incluso para quien envió key",
+      "Rate-limit identificado por API key antes que por host; CORS * sin credenciales",
+      "LTM/trazas privadas: Databricks ISOLATED; secretos solo por env — nada horneado",
+      "Conectores con ${VAR} sin expandir fallan cerrados (disabled), nunca abiertos"
+    ] },
+    { "dot": "orange", "title": "Corroboración honesta", "items": [
+      "Pesos reliability = priors de POC, no calibrados (sin dataset de conflictos etiquetado)",
+      "INDEPENDENCE_BONUS y RECENCY_BONUS: constantes de desempate, no estimadores",
+      "Conflicto se reporta honesto, nunca se fuerza a un veredicto",
+      "La curva de escalada a modelos en el tiempo ES la curva de aprendizaje — si no decae, la tesis pierde"
+    ] }
+  ]
+}
