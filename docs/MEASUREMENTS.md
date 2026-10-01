@@ -41,9 +41,46 @@
 * Base Kev-0.8B: acc **0.855**, Brier **0.230**, auto@0.9 132/200 err=0.061
 * Fine-tuned (800 rows, 2 epochs, lr 2e-5, 13.5min on RTX 3060): acc **0.880** (+2.5pts), Brier **0.204**, auto@0.9 173/200 err=0.087
 * Reading: accuracy AND Brier improve, but automation error worsens (0.061→0.087) — temperature unfitted (1.00 vs base 2.35), i.e. overconfident. The recipe's prescribed next step (fit temperature on heldout) directly addresses it.
-* **Verdict**: MIXED — promote accuracy, fail calibration gate. No promotion until temperature refit. First complete learn→train→measure loop: the machinery works end to end.
+* **Verdict**: MIXED → PROMOTED after temperature refit. T=1.9 fitted on slice `test[1000:1200]`, validated on fresh `test[1200:1400]`: acc 0.925, Brier 0.127, operating point moved to T=0.7 → **139/200 automated (70%) err=0.036** (inside 5% budget). `judge.temperature: 1.9` in config. First complete learn→train→calibrate→measure loop: the machinery works end to end.
 
-## Open gates (one closed 2026-09-30)
+## 2026-10-01 · Retrieval-at-scale (`scripts/pilot_retrieval_scale.py`, 2000 distractors + 2 golden)
+
+* Gold HIT+RIGHT 2/2 at every threshold 0.2–0.5 (buried gold is found).
+* 1/2 negatives leaks at ALL thresholds: fictional-planet question hits a Saturn-moons article (overlap 0.60) — lexical ceiling, no threshold fixes meaning-blindness.
+* **Fix shipped**: lone-voice corroboration now requires reliability ≥ 0.9 OR ≥2 independent voices (`SOLO_RELIABILITY`, `service/corroboration.py`). Lexical solo hits → `uncertain` (answer attached, unclaimed); exact solo sources (PokeAPI 0.95) still corroborate. `41/41` green.
+* Threshold 0.35 stands. Semantic retrieval (vectors/rerank) remains the real fix — deferred per freeze rule until a gate demands it.
+
+## 2026-10-01 · Continuous rounds (`scripts/rounds_continuous.py`, new+repeats, persistent memory)
+
+* round1: acc=1.0 memory=0.00 retrieval=1.00 lat=0.147s · round2: 1.0 / 0.20 / 0.80 · round3: 1.0 / 0.36 / 0.64 (entries 20→40→56)
+* The escalation-decay curve exists over time, not just r1-vs-r2: retrieval share falls as memory absorbs repeats. Accuracy never moves. Log in `data/rounds_log.jsonl` for plotting.
+
+## 2026-10-01 · Longitudinal baseline (`scripts/longitudinal.py`, `evals/longitudinal_set.v1.json`)
+
+* 2026-10-01 v1 (core backend, no network sources): acc=0.50 answered=0.50 contested_ok=1. Cron-ready (line in script docstring). Future runs must show acc↑ via memory+retrieval — that slope IS the "learn for real" proof.
+
+## 2026-10-01 · Market longitudinal (`scripts/longitudinal_market.py`, Yahoo no-key)
+
+* Static PokeAPI measures accumulation; market truth MOVES — this measures the UPDATE loop: stale memory detected, demoted via `record_outcome(False)`, corrected by fresh truth.
+* Dry run 2× same day: cold acc=0.0 → populated acc=1.0, stale=0 (market static intraday — staleness appears across weeks, which is the point).
+* Timer Wednesdays 06:00 (interleaved). Metric to watch: stale_rate decay with acc steady.
+
+## 2026-10-01 · Formation predictions (`scripts/formations_market.py`, Yahoo no-key)
+
+* Formation = 5-day sign skeleton + MA50 position. Separate books: OBSERVATIONS (always accumulate P(up|formation)) vs PREDICTIONS (gated: trials≥3, |P-0.5|>0.10). No signal → no prediction, never forced.
+* First run: 3 families observed, 0 predictions (correct gating with no history). Paper P&L with cost assumption. Timer Fridays 18:00.
+* Verdict rule: prediction hit-rate vs base rate net of costs over dozens of trials, or prune the family (and eventually the idea).
+
+## Open gates
+
+* Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
+* ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
+* **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
+* **Market longitudinal** (runner + Wed timer DONE 2026-10-01): watch stale_rate decay with acc steady.
+* **Paper-trading pilot** (PENDING): user-defined 2–3 setups, streaming loop, paper accounting (positions, costs, net P&L vs buy-and-hold), 4–8 weeks. Without costs it's fiction.
+* Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
+* Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
+* Federated process learning PoC (two local instances sharing only `procedure_sig`s).
 
 * ~~Escalation-decay curve on live traffic~~ MEASURED (`scripts/pilot_pokeapi.py`, 30 Pokémon × 2 Qs × 2 rounds vs API truth): **round1 acc 60/60 memory_hits 0/60 @0.16s → round2 acc 60/60 memory_hits 60/60 @0.00s**. First direct learning-curve evidence: retrieval cost → 0 on repeat.
 * Kev fine-tune on own labels (dataset `data/agnews_kev_1000.jsonl` ready, 1000 balanced rows)

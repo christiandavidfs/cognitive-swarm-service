@@ -1,0 +1,11 @@
+[Unit]
+Description=Longitudinal learning probe (cognitive-swarm-service)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/kaizen/repos/cognitive-swarm-service
+Environment=BACKENDS=cognitive_swarm
+Environment=PYTHONPATH=/home/kaizen/repos/cognitive-swarm
+ExecStart=/home/linuxbrew/.linuxbrew/bin/python3 scripts/longitudinal.py
+StandardOutput=append:/home/kaizen/repos/cognitive-swarm-service/data/longitudinal_cron.log
+StandardError=append:/home/kaizen/repos/cognitive-swarm-service/data/longitudinal_cron.log

@@ -105,12 +105,39 @@ def classify_question(question: str) -> tuple:
     choice = ans.get("choice")
     probs = {k: float(v) for k, v in (ans.get("probabilities") or {}).items()}
     conf = float(ans.get("confidence", 0.0))
+    # Post-hoc temperature (JUDGE_TEMPERATURE, fitted on held-out): rescale the
+    # distribution and recompute confidence from concentration. Choice never moves.
+    t = _judge_temperature()
+    if probs and abs(t - 1.0) > 1e-9:
+        from .primitives import _concentration
+        probs = _rescale(probs, t)
+        conf = _concentration(probs)
+        top = max(probs, key=probs.get)
+        if choice not in probs:
+            choice = top
     mapping = {"code": TaskType.CODE, "math": TaskType.MATH, "reasoning": TaskType.REASONING}
     if choice in mapping:
         return mapping[choice], Judgment(kind="choice", choice=choice, probs=probs,
                                          confidence=conf, unknown=False)
     return TaskType.UNKNOWN, Judgment(kind="choice", choice=None, probs=probs,
                                       confidence=conf, unknown=True)
+
+
+def _rescale(probs: Dict[str, float], temperature: float) -> Dict[str, float]:
+    """Post-hoc temperature scaling (fitted on held-out, never train).
+    Choice (argmax) never changes — only the distribution sharpness."""
+    if not probs or temperature <= 0:
+        return probs
+    qs = {k: max(v, 1e-12) ** (1.0 / temperature) for k, v in probs.items()}
+    z = sum(qs.values()) or 1.0
+    return {k: v / z for k, v in qs.items()}
+
+
+def _judge_temperature() -> float:
+    try:
+        return float(os.getenv("JUDGE_TEMPERATURE", "1.0"))
+    except ValueError:
+        return 1.0
 
 
 def timed_classify(question: str) -> tuple:

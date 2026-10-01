@@ -152,6 +152,17 @@ class DebateRequest(BaseModel):
 
 # --- Routes
 
+@app.get("/")
+def root():
+    return {
+        "service": "cognitive-swarm-service",
+        "docs": "/docs",
+        "health": "/health",
+        "resolve": "POST /resolve {question, connectors?, models?}",
+        "jobs": "POST /jobs/debate",
+    }
+
+
 @app.get("/health")
 def health():
     mem = get_memory()

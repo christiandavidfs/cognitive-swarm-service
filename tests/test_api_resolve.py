@@ -160,3 +160,27 @@ def test_recency_neutral_preserves_legacy():
         SourceClaim(source="b", answer="Same", reliability=0.8),
     ])
     assert v.status == "corroborated" and v.answer == "Same"
+
+
+def test_pokeapi_registered_and_gated():
+    from service.connectors.registry import build_retrievers, describe_registry
+    names = [c["name"] for c in describe_registry()]
+    assert "pokeapi" in names
+    rs = build_retrievers(enabled_only=False, include=["pokeapi"])
+    assert len(rs) == 1
+    from service.contracts import TaskType
+    assert rs[0].applies_to(TaskType.UNKNOWN) and not rs[0].applies_to(TaskType.CODE)
+    assert rs[0].get_claims("tell me a story?") == []  # no network, no match
+
+
+def test_solo_lexical_stays_uncertain_solo_exact_corroroborates():
+    from service.corroboration import Corroborator
+    from service.contracts import SourceClaim
+    v = Corroborator().corroborate([
+        SourceClaim(source="local-docs:x", answer="Cassini...", reliability=0.8),
+    ])
+    assert v.status == "uncertain" and v.answer == "Cassini..."
+    v2 = Corroborator().corroborate([
+        SourceClaim(source="pokeapi:x", answer="electric", reliability=0.95),
+    ])
+    assert v2.status == "corroborated" and v2.answer == "electric"

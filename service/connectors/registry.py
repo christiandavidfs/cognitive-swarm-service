@@ -35,6 +35,7 @@ def _load_builtins():
     from .databricks import DatabricksSQLRetriever
     from .postgres import PostgresRetriever
     from .generic_http import GenericHTTPRetriever
+    from .pokeapi import PokeAPIConnector
 
     return {
         "wikidata": WikidataRetriever,
@@ -46,6 +47,7 @@ def _load_builtins():
         "databricks": DatabricksSQLRetriever,
         "postgres": PostgresRetriever,
         "generic_http": GenericHTTPRetriever,
+        "pokeapi": PokeAPIConnector,
     }
 
 _BUILTINS: Optional[Dict[str, type]] = None

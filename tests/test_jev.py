@@ -75,3 +75,13 @@ def test_explicit_env_wins_over_yaml(tmp_path, monkeypatch):
     cfg.write_text("judge:\n  backend: jev\n")
     from service.judgments import configure
     assert configure(config_path=cfg)["backend"] == "heuristic"
+
+
+def test_rescale_preserves_argmax_and_softens():
+    from service.judgments.jev import _rescale
+    probs = {"a": 0.9, "b": 0.1}
+    out = _rescale(probs, 1.9)
+    assert max(out, key=out.get) == "a"  # choice never moves
+    assert out["a"] < 0.9  # softer
+    assert abs(sum(out.values()) - 1.0) < 1e-9
+    assert _rescale(probs, 1.0) == probs

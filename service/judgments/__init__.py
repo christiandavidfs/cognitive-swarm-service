@@ -38,7 +38,8 @@ def configure(config_path=None) -> dict:
     os.environ.setdefault("JUDGE", str(backend))
     via = os.getenv("JEV_VIA") or judge.get("jev_via", "typesafe")
     os.environ.setdefault("JEV_VIA", str(via))
-    for yaml_key, env_key in (("base_url", "TYPESAFE_BASE_URL"), ("model", "JEV_MODEL")):
+    for yaml_key, env_key in (("base_url", "TYPESAFE_BASE_URL"), ("model", "JEV_MODEL"),
+                            ("temperature", "JUDGE_TEMPERATURE")):
         val = os.getenv(env_key) or judge.get(yaml_key)
         if val:
             os.environ.setdefault(env_key, str(val))

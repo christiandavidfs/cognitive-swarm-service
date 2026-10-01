@@ -13,13 +13,20 @@ service:
 # Switch judges per need without touching code: local Kev for free/private,
 # paid Jev for max accuracy, heuristic when offline.
 judge:
-  backend: heuristic
+  backend: heuristic   # default stays offline-safe. Production blocks below.
   jev_via: typesafe     # typesafe | vercel
   base_url: ""          # override: e.g. http://127.0.0.1:8019 (local Kev)
   model: ""             # override: e.g. kev-latest | typesafe-ai/jev
   api_key_env: ""       # env var holding the key (default per via)
+  temperature: 1.0      # post-hoc scaling, fitted on held-out (Kev-AGNews: 1.9)
   seats:                # per-decision override (Fase 4+); classify is live today
     classify: heuristic
+  # Production (promoted 2026-09-30, MEASUREMENTS.md): fine-tuned judge + T=1.9.
+  # Serve via scripts/serve_all.sh, then flip this block on:
+  # backend: jev
+  # base_url: "http://127.0.0.1:8020"
+  # model: "kev-latest"
+  # temperature: 1.9
 
 # Resolver backends — optional deterministic solvers, tried in order.
 # Each name loads service/backends/<name>.py; missing backends are skipped
@@ -61,7 +68,11 @@ connectors:
     base_url: "${CONFLUENCE_BASE_URL}"
     # space, auth via CONFLUENCE_API_TOKEN env
   databricks_sql:
-    enabled: true
+    enabled: false   # needs DATABRICKS_HOST/WAREHOUSE_ID/TOKEN (see .env.example).
+    # Disabled 2026-10-01: without creds it fails closed ([]) while spawning
+    # a token subprocess per minute — cost without contribution. All measured
+    # pilots run without it. Flip to true after `databricks auth login` +
+    # `python scripts/seed_databricks.py --verify`.
     reliability: 1.0
     warehouse_id: "${DATABRICKS_WAREHOUSE_ID}"
     host: "${DATABRICKS_HOST}"
@@ -75,6 +86,12 @@ connectors:
     enabled: false
     reliability: 0.6
     base_url: "${GENERIC_HTTP_BASE_URL}"
+  # Free ground-truth demo source (no key). Per-request `connectors:["pokeapi"]`
+  # or flip enabled:true. Proves the one-file connector pattern live.
+  pokeapi:
+    enabled: false
+    reliability: 0.95
+    timeout_s: 8
 
 # Model registry — choosable per request via `models: ["phi","qwen","minimax-m3",...]`
 # type: mlx | api (openai-compatible). MLX models load sequentially on 8GB (one at a time).
