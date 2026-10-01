@@ -43,7 +43,14 @@
 * Reading: accuracy AND Brier improve, but automation error worsens (0.061→0.087) — temperature unfitted (1.00 vs base 2.35), i.e. overconfident. The recipe's prescribed next step (fit temperature on heldout) directly addresses it.
 * **Verdict**: MIXED → PROMOTED after temperature refit. T=1.9 fitted on slice `test[1000:1200]`, validated on fresh `test[1200:1400]`: acc 0.925, Brier 0.127, operating point moved to T=0.7 → **139/200 automated (70%) err=0.036** (inside 5% budget). `judge.temperature: 1.9` in config. First complete learn→train→calibrate→measure loop: the machinery works end to end.
 
-## Open gates (one closed 2026-09-30)
+## Open gates
+
+* Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
+* Retrieval-at-scale with distractors (PENDING per 2026-10-01): real noisy corpus (repo docs + Wikipedia slice) measuring HIT-rate + false-hits + threshold tuning. Toy corpora don't count as evidence.
+* Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
+* Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
+* Federated process learning PoC (two local instances sharing only `procedure_sig`s; needs partner or self-simulation).
+* Serving persistence: demo :8000 + Kev :8019/:8020 run via nohup (die on restart); docker-compose doesn't include the judge; FT checkpoint lives only in `kev-local/runs/`. Promote judge defaults in `config/service.yaml` when ready. (one closed 2026-09-30)
 
 * ~~Escalation-decay curve on live traffic~~ MEASURED (`scripts/pilot_pokeapi.py`, 30 Pokémon × 2 Qs × 2 rounds vs API truth): **round1 acc 60/60 memory_hits 0/60 @0.16s → round2 acc 60/60 memory_hits 60/60 @0.00s**. First direct learning-curve evidence: retrieval cost → 0 on repeat.
 * Kev fine-tune on own labels (dataset `data/agnews_kev_1000.jsonl` ready, 1000 balanced rows)
