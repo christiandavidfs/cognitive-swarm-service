@@ -9,9 +9,10 @@ service:
 
 # Judge backend — who implements Choice/Score/Noul (Juicios 1-5).
 # backend: heuristic (free, local regex) | jev (any SystemOne-compatible endpoint:
-#   TypeSafe Jev, local Kev, Vercel gateway). Env JUDGE wins over this file.
-# Switch judges per need without touching code: local Kev for free/private,
-# paid Jev for max accuracy, heuristic when offline.
+#   TypeSafe Jev, local Kev, Vercel gateway) | laya (open-weights local decision
+#   model via sidecar, scripts/laya_server.py — Gate A/B measured, see docs/MEASUREMENTS.md).
+# Env JUDGE wins over this file. Switch judges per need without touching code:
+# local Kev for free/private, paid Jev for max accuracy, heuristic when offline.
 judge:
   backend: heuristic   # default stays offline-safe. Production blocks below.
   jev_via: typesafe     # typesafe | vercel
@@ -19,6 +20,10 @@ judge:
   model: ""             # override: e.g. kev-latest | typesafe-ai/jev
   api_key_env: ""       # env var holding the key (default per via)
   temperature: 1.0      # post-hoc scaling, fitted on held-out (Kev-AGNews: 1.9)
+  # Juicio 3 spike (Fase A): dual-judge consensus + arbiter on conflict.
+  # OFF by default (architecture freeze) — JUDGE_ADJUDICATE=1 to enable.
+  # LAYA_SECONDARY / LAYA_ARBITER env override the judge names.
+  adjudicate: false
   seats:                # per-decision override (Fase 4+); classify is live today
     classify: heuristic
   # Production (promoted 2026-09-30, MEASUREMENTS.md): fine-tuned judge + T=1.9.

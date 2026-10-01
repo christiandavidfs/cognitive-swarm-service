@@ -21,10 +21,28 @@ _MATH_RE = _re.compile(r"\d\s*[-+*/^%]\s*\d|\d\s*(?:plus|minus|times|divided by)
 def classify_question(question: str) -> tuple:
     """Return (TaskType, Judgment). UNKNOWN comes with unknown=True set.
 
+    `JUDGE=laya` (+ local LAYA_BASE_URL sidecar) routes to the open-weights
+    decision model; with JUDGE_ADJUDICATE=1 the dual-judge consensus + Juicio 3
+    arbitration wraps it (service/judgments/adjudicate.py, default OFF).
     `JUDGE=jev` (plus TYPESAFE_API_KEY) routes to the Jev-backed classifier;
-    any Jev failure falls back to heuristics — a judge must never break routing.
+    any judge failure falls back to heuristics — a judge must never break
+    routing.
     """
-    if os.getenv("JUDGE", "heuristic").lower() == "jev":
+    judge = os.getenv("JUDGE", "heuristic").lower()
+    if judge == "laya":
+        if os.getenv("JUDGE_ADJUDICATE") == "1":
+            try:
+                from .adjudicate import adjudicated_classify
+                adj = adjudicated_classify(question)
+                return adj.task_type, adj.judgment
+            except Exception:
+                pass  # fall through — adjudication never breaks routing
+        try:
+            from .laya import classify_question as _laya_classify
+            return _laya_classify(question)
+        except Exception:
+            pass
+    if judge == "jev":
         try:
             from .jev import classify_question as _jev_classify
             return _jev_classify(question)

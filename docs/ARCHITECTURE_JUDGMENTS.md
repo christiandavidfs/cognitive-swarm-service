@@ -35,7 +35,7 @@ service/
   contracts.py        # TaskType, SourceClaim, Verdict, Resolution, Connector ABC, ResolverBackend ABC
   router.py           # Jerarquía: memoria → backends → retrieval+corroboración → none/debate
   corroboration.py    # Pesos reliability + bonus independencia; conflict honesto, nunca forzado
-  judgments/          # [Fase 2 DONE] Capa de juicios: primitives.py (Choice/Score/Noul) + classify.py (heurística) + jev.py (Jev/Kev intercambiable, judge.backend)
+  judgments/          # [Fase 2 DONE] Capa de juicios: primitives.py (Choice/Score/Noul) + classify.py (heurística) + jev.py (Jev/Kev intercambiable, judge.backend) + laya.py (open-weights decision model sidecar, unknown impuesto por adaptador) + adjudicate.py (Juicio 3 spike: consenso dual-judge + árbitro en conflicto, OFF por defecto)
   orchestrator/       # [Fase 3, esqueleto] director.py: política de ruteo tras reflejos, fallback; política aprendida pendiente
   backends/           # Resolvedores deterministas opcionales (cognitive_swarm, reasoners destilados, …)
   memory/
@@ -131,4 +131,5 @@ cuarentena por sitio nuevo. Outcome lento → LTM de pocos casos, altísima cali
 * **Fase 3** — Orquestador pequeño tras los reflejos; training = outcomes de ruteo; fallback + `unknown`. Esqueleto DONE (`director.py` + tests); política aprendida con outcomes pendiente.
 * **Fase 3b (extra-tesis)** — Curiosidad DONE (operadores 1–2), recencia DONE (peso), familias emergentes DONE (degradadas a priors).
 * **Fase 4** — Jev solo en Juicio 1 (configurable vía `judge.seats`); medir agreement / p95 / calibración propia.
+* **Fase LAYA (spike, `feat/laya-judge-adjudicate`)** — `judgments/laya.py` (backend open-weights Convai LAYA via sidecar SystemOne-shape, temperatura de calibración + route `unknown` impuesto por el adaptador — LAYA siempre devuelve probs forzadas) y `judgments/adjudicate.py` (Juicio 3: consenso LAYA+secundario, conflicto → árbitro, árbitro caído → heurística loud/safe; conf consenso = min, jamás inflada). Gate A: `scripts/bench_laya.py` + sidecar `scripts/laya_server.py`. Regla de promoción: err@θ ≤ 0.062 (baseline Kev) a coverage ≥ 0.73. Zero-shot LAYA esperado débil (~0.36 vendor) — el valor es post fine-tune sobre etiquetas propias (Gate B).
 * **Fase 5** — Destilación semanal + piloto con outcome rápido (juego o papel); medicina solo como triaje tardío. Gate de paráfrasis dijo NO (2026-09-30, `scripts/bench_paraphrase.py`) — destilación diferida.
