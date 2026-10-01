@@ -50,6 +50,11 @@
 * **Fix shipped**: lone-voice corroboration now requires reliability ≥ 0.9 OR ≥2 independent voices (`SOLO_RELIABILITY`, `service/corroboration.py`). Lexical solo hits → `uncertain` (answer attached, unclaimed); exact solo sources (PokeAPI 0.95) still corroborate. `41/41` green.
 * Threshold 0.35 stands. Semantic retrieval (vectors/rerank) remains the real fix — deferred per freeze rule until a gate demands it.
 
+## 2026-10-01 · Continuous rounds (`scripts/rounds_continuous.py`, new+repeats, persistent memory)
+
+* round1: acc=1.0 memory=0.00 retrieval=1.00 lat=0.147s · round2: 1.0 / 0.20 / 0.80 · round3: 1.0 / 0.36 / 0.64 (entries 20→40→56)
+* The escalation-decay curve exists over time, not just r1-vs-r2: retrieval share falls as memory absorbs repeats. Accuracy never moves. Log in `data/rounds_log.jsonl` for plotting.
+
 ## Open gates
 
 * Escalation-decay CONTINUOUS (PokeAPI was 2 rounds; need rounds over time — HN stream or scheduled rounds + curiosity). The mother metric, still one-shot.
