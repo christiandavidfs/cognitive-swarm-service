@@ -1,0 +1,9 @@
+[Unit]
+Description=Formations every Friday 18:00 (markets closed)
+
+[Timer]
+OnCalendar=Fri *-*-* 18:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

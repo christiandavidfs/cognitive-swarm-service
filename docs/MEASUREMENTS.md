@@ -65,7 +65,11 @@
 * Dry run 2× same day: cold acc=0.0 → populated acc=1.0, stale=0 (market static intraday — staleness appears across weeks, which is the point).
 * Timer Wednesdays 06:00 (interleaved). Metric to watch: stale_rate decay with acc steady.
 
-## Open gates
+## 2026-10-01 · Formation predictions (`scripts/formations_market.py`, Yahoo no-key)
+
+* Formation = 5-day sign skeleton + MA50 position. Separate books: OBSERVATIONS (always accumulate P(up|formation)) vs PREDICTIONS (gated: trials≥3, |P-0.5|>0.10). No signal → no prediction, never forced.
+* First run: 3 families observed, 0 predictions (correct gating with no history). Paper P&L with cost assumption. Timer Fridays 18:00.
+* Verdict rule: prediction hit-rate vs base rate net of costs over dozens of trials, or prune the family (and eventually the idea).
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
