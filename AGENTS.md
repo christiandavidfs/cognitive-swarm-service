@@ -63,8 +63,8 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 ## Operational facts
 
-* **Python**: brew `python3` (3.14); use `/home/linuxbrew/.linuxbrew/bin/python3 -m pytest`; needs `--break-system-packages` for pip installs. `cognitive-swarm` core clone at `/home/kaizen/repos/cognitive-swarm` (no pyproject — usable via `PYTHONPATH`, adapter only).
-* **Scripts**: `seed_databricks.py --verify` (needs env, fails fast), `ingest_corpus.py <dir>` (report only), `seed_procedures.py`/`generate_procedures.py`/`distill_to_qwen.py` need core package (clear error otherwise).
+* **Python**: brew `python3` (3.14); use `/home/linuxbrew/.linuxbrew/bin/python3 -m pytest`; needs `--break-system-packages` for pip installs. `cognitive-swarm` core clone at `/home/kaizen/repos/cognitive-swarm` (no pyproject — usable via `PYTHONPATH`, adapter only). FT adapter backup at `/home/kaizen/models/kev-agnews-08b` (sha 760d992911d13368, base rev 9a45d25e); Kev repo at `/home/kaizen/repos/kev-local` (anaconda python3.13 + uv).
+* **Scripts**: `seed_databricks.py --verify` (needs env, fails fast), `ingest_corpus.py <dir>` (report only), `seed_procedures.py`/`generate_procedures.py`/`distill_to_qwen.py` need core package (clear error otherwise), `serve_judge.sh`/`serve_all.sh` (pinned serving: judge :8020 + api :8000).
 * **Thresholds**: `memory 0.85` (env `MEMORY_SIMILARITY_THRESHOLD`), `local_docs 0.35`, LIKE `%,_,\` escaped + 200-char clamp in databricks queries.
 * **Results non-deterministic** for debate only; deterministic tiers reproducible.
 
