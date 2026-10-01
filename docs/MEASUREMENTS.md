@@ -71,6 +71,8 @@
 * First run: 3 families observed, 0 predictions (correct gating with no history). Paper P&L with cost assumption. Timer Fridays 18:00.
 * Verdict rule: prediction hit-rate vs base rate net of costs over dozens of trials, or prune the family (and eventually the idea).
 
+## Open gates
+
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
