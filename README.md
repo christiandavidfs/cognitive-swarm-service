@@ -52,9 +52,9 @@ curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
 # ^ requires the optional backend — without `cognitive_swarm` installed this
 #   returns null; only memory + retrieval answer.
 
-# factual via Tier 3 — corroborated with provenance (Databricks requires its env; see section below)
+# factual via Tier 3 — corroborated with provenance (needs a live source: wikidata, or databricks_sql flipped on with its env; see section below)
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
-  -d '{"question":"When did the Western Roman Empire fall?"}'  # -> 476 CE, sources: local-docs + databricks:testing.swarm_knowledge:1
+  -d '{"question":"When did the Western Roman Empire fall?"}'  # -> 476 CE via wikidata/local-docs (databricks only if enabled+configured)
 
 # contested — honest disagreement, no forced single answer
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
@@ -62,7 +62,7 @@ curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
 
 # choose connectors and models per request
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
-  -d '{"question":"When did the Western Roman Empire fall?","connectors":["databricks_sql","wikidata"]}'
+  -d '{"question":"When did the Western Roman Empire fall?","connectors":["wikidata","openalex"]}'
 curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
   -d '{"question":"What is 2+2?","connectors":["wikidata","openalex"]}'  # still 4 — L2 wins before Tier 3
 
@@ -70,9 +70,9 @@ curl -X POST http://localhost:8000/resolve -H 'content-type: application/json' \
 curl -X POST http://localhost:8000/jobs/debate -H 'content-type: application/json' -d '{"question":"What is 2+2?"}'
 ```
 
-## Databricks
+## Databricks (disabled by default)
 
-Optional Tier 3 source. Host, warehouse id, and token come from the environment (`DATABRICKS_HOST`, `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_TOKEN`) — see `.env.example`. They are not baked into `config/service.yaml`. An unexpanded `${...}` placeholder fails closed: the connector returns no claims.
+Optional Tier 3 source, currently OFF (`databricks_sql.enabled: false` — without creds it would fail closed while spawning a token subprocess per minute). Host, warehouse id, and token come from the environment (`DATABRICKS_HOST`, `DATABRICKS_WAREHOUSE_ID`, `DATABRICKS_TOKEN`) — see `.env.example`. They are not baked into `config/service.yaml`. An unexpanded `${...}` placeholder fails closed: the connector returns no claims. Flip to `enabled: true` after `databricks auth login` + `python scripts/seed_databricks.py --verify`.
 
 `databricks auth token` is opt-in only: the CLI subprocess (`auth token` / profiles sweep) runs solely when `DATABRICKS_ALLOW_CLI_TOKEN=1` (fase 5 of `plan/remediacion-hallazgos.md`, default off). Without a token, the connector fails soft — `get_claims` returns `[]`.
 

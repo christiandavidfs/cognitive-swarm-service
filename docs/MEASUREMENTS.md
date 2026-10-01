@@ -71,6 +71,12 @@
 * First run: 3 families observed, 0 predictions (correct gating with no history). Paper P&L with cost assumption. Timer Fridays 18:00.
 * Verdict rule: prediction hit-rate vs base rate net of costs over dozens of trials, or prune the family (and eventually the idea).
 
+## 2026-10-01 · Laya zero-shot (local ONNX CPU, :8000 — ignores --port flag)
+
+* Same slice `test[1000:1200]`, n=200: acc **0.915**, Brier **0.144**, auto@0.9 60/200 err=**0.000**. Sweep: T=0.7 → 113/200 (57%) err=0.009; T=0.8 → 92/200 err=0.000.
+* Beats Kev-0.8B base (0.855/0.230) AND our fine-tune w/o temp (0.880/0.204) zero-shot. **Laya takes the routing-judge seat**; Kev-FT+T1.9 stays as fallback/ensemble candidate. Calibration: confidence here is well-behaved out of the box (their temp warning noted, our sweep confirms).
+* Ops quirks: `laya-serve` binds :8000 regardless of flags (conflicts with demo API — run demo elsewhere); first run downloads ~421M checkpoint.
+
 ## Open gates
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
@@ -79,9 +85,6 @@
 * **Market longitudinal** (runner + Wed timer DONE 2026-10-01): watch stale_rate decay with acc steady.
 * **Paper-trading pilot** (PENDING): user-defined 2–3 setups, streaming loop, paper accounting (positions, costs, net P&L vs buy-and-hold), 4–8 weeks. Without costs it's fiction.
 * Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
-* Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready).
+* Laya fine-tune on own labels (export tooling exists on develop; 400+ rows needed) + Laya vs Kev-FT ensemble test.
+* Jev-paid vs best local judge on OUR decisions (needs paid key; the script is ready).
 * Federated process learning PoC (two local instances sharing only `procedure_sig`s).
-
-* ~~Escalation-decay curve on live traffic~~ MEASURED (`scripts/pilot_pokeapi.py`, 30 Pokémon × 2 Qs × 2 rounds vs API truth): **round1 acc 60/60 memory_hits 0/60 @0.16s → round2 acc 60/60 memory_hits 60/60 @0.00s**. First direct learning-curve evidence: retrieval cost → 0 on repeat.
-* Kev fine-tune on own labels (dataset `data/agnews_kev_1000.jsonl` ready, 1000 balanced rows)
-* Jev-paid vs Kev-finetuned on OUR decisions (needs paid key; the script is ready)
