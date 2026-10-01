@@ -48,7 +48,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 ## State / how to resume
 
 * **Branch**: `main` (merged `1c21fd5`). Next work → new `feat/*` branch.
-* **Tests**: `BACKENDS=__none__ python -m pytest -q` → `39/39` (12 API + 4 memory + 5 judgments + 3 curiosity + 4 orchestrator + 6 jev + 5 families). With core installed: `BACKENDS=cognitive_swarm`.
+* **Tests**: `BACKENDS=__none__ python -m pytest -q` → `40/40` (13 API + 4 memory + 5 judgments + 3 curiosity + 4 orchestrator + 6 jev + 5 families). With core installed: `BACKENDS=cognitive_swarm`.
 * **Roadmap**: Fase 1 DONE (learning memory), Fase 2 DONE (judgments seam), curiosidad DONE, recencia DONE, familias emergentes DONE (tipos degradados a priors). Next: Kev fine-tune on own labels (needs dataset ≥400) → pilot.
 * **Pending measurements**: paraphrase gap MEASURED 2026-09-30 (`scripts/bench_paraphrase.py`): regex 9/12 (3 loud misses, 0 silent) vs tfidf 9/12 (fixes 1 miss, adds 1 silent wrong). GATE SAYS NO — distillation deferred. Kev-0.8B local (RTX 3060 6GB, KEV_CUDA_GRAPHS=0, :8019) Juicio 1 MEASURED (`scripts/measure_jev_classify.py`): 0/12 vs our taxonomy — lumps story+numbers into math (conf tracks difficulty). VERDICT: no extend zero-shot on OUR taxonomy. **AG News pilot MEASURED (`scripts/pilot_agnews.py --judge`, n=200, free labels): Kev-0.8B zero-shot accuracy 0.900, Brier 0.176, automated@conf≥0.9 146/200 err=0.062** (author yardstick 5% budget — just above). **Shootout MEASURED 2026-09-30: OpenDecider-nano CPU accuracy 0.815, Brier 0.302, auto@0.9 84/200 err=0.095, 10s/200 calls.** VERDICT: Kev-0.8B keeps the judge seat; OpenDecider relegated to cheap bulk pre-screen (20× faster, worse calibration). Vendor claims (OD> Jev) do not transfer to our tasks — measure, don't trust. Local judges WORK on natural routing tasks; fine-tune JSONL regenerable via the script. Remaining: escalation-decay curve on live traffic.
 
@@ -70,7 +70,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 ## Conventions
 
-* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `39/39`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved. CI (`.github/workflows/ci.yml`) runs the same on push.
+* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `40/40`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved. CI (`.github/workflows/ci.yml`) runs the same on push.
 * **Architecture freeze**: no new layer/module without a measurement showing existing layers fail it. Dogfood first (this repo's own issues/traffic as pilot data).
 * **Ontology stability**: `TaskType`/families are versioned priors, not truth. Taxonomy changes require re-running all gates; sig-based identity never breaks.
 * **Vendor independence**: Kev pinned by revision + checksums where served; judge seam keeps Heuristic/Jev/Kev interchangeable (`judge.backend`). No single-vendor code paths — ever.

@@ -160,3 +160,14 @@ def test_recency_neutral_preserves_legacy():
         SourceClaim(source="b", answer="Same", reliability=0.8),
     ])
     assert v.status == "corroborated" and v.answer == "Same"
+
+
+def test_pokeapi_registered_and_gated():
+    from service.connectors.registry import build_retrievers, describe_registry
+    names = [c["name"] for c in describe_registry()]
+    assert "pokeapi" in names
+    rs = build_retrievers(enabled_only=False, include=["pokeapi"])
+    assert len(rs) == 1
+    from service.contracts import TaskType
+    assert rs[0].applies_to(TaskType.UNKNOWN) and not rs[0].applies_to(TaskType.CODE)
+    assert rs[0].get_claims("tell me a story?") == []  # no network, no match
