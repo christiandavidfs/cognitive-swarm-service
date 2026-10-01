@@ -1,0 +1,9 @@
+[Unit]
+Description=Market probe (Wednesdays 06:00, interleaved with Monday probe)
+
+[Timer]
+OnCalendar=Wed *-*-* 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
