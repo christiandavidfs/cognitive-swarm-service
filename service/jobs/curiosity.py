@@ -8,6 +8,10 @@ blind spots (the map of own ignorance), never as knowledge.
       procedure_sig family? → archive as new-numbers instance.
   Op2 compose: inject a verified numeric answer as a number into another
       verified question → solve → archive if verified (genuine composition).
+  Op3 chain: build a TWO-STEP procedure (A THEN B) whose combined trace is
+      verified end-to-end and archived under a NEW chain procedure_sig —
+      procedure synthesis, not instance generation. Chains with new numbers
+      share the chain skeleton (same process, composed).
 
 Targeting: source patterns with fewest archived instances go first
 (ignorance-first). Budget caps every run. Redaction (op3) arrives with the
@@ -122,9 +126,47 @@ class CuriosityEngine:
         report["generated"] += 1
         self._try_archive(new_q, None, report, "compose")  # family may legitimately change
 
+    def op3_chain(self, entry_a: dict, entry_b: dict, report: dict) -> None:
+        """Synthesize A-THEN-B: re-verify A's step, solve B with A's answer
+        injected, archive the COMBINED trace under a new chain skeleton.
+
+        This is procedure synthesis: the archived item is neither A nor B but
+        the composition, reusable with new numbers (same chain_sig). Both
+        steps must verify or nothing is archived."""
+        try:
+            seed_num = int(str(entry_a.get("answer", "")).strip().split()[0])
+        except (ValueError, IndexError):
+            return
+        trace_a = entry_a.get("trace")
+        if not trace_a:
+            return  # chains require verified step traces, not bare answers
+        qb = entry_b.get("question", "")
+        m = _NUM_RE.search(qb)
+        if not m or seed_num < 2:
+            return
+        new_q = f"First: {entry_a.get('question')} Then: " + qb[:m.start()] + str(seed_num) + qb[m.end():]
+        if self.store.normalize(new_q) in self.store.entries:
+            return
+        report["generated"] += 1
+        solved_b = self._solve(qb[:m.start()] + str(seed_num) + qb[m.end():])
+        if solved_b is None or solved_b.answer is None:
+            self.blind_spots.append({"op": "chain", "question": new_q[:120]})
+            report["blind_spots"] += 1
+            return
+        trace_b = solved_b.trace or f"{solved_b.pattern or '?'} -> {solved_b.answer}"
+        chain_trace = f"CHAIN [{trace_a}] THEN [{trace_b}] = {solved_b.answer}"
+        self.store.remember_trace(new_q, chain_trace, solved_b.answer,
+                                  tier="chain", confidence=0.99)
+        try:
+            self.store.record_outcome(new_q, True)
+        except Exception:
+            pass
+        report["archived"] += 1
+
     # -- run -----------------------------------------------------------
     def run(self) -> dict:
-        report = {"generated": 0, "archived": 0, "blind_spots": 0, "ops": {"numbers": 0, "compose": 0}}
+        report = {"generated": 0, "archived": 0, "blind_spots": 0,
+                  "ops": {"numbers": 0, "compose": 0, "chain": 0}}
         fams = self._families()
         pool = [e for fam in fams.values() for e in fam]
         if not pool:
@@ -139,8 +181,12 @@ class CuriosityEngine:
             if spent < self.budget and len(pool) > 1:
                 other = pool[(i + 1) % len(pool)]
                 if other is not entry:
-                    self.op2_compose(entry, other, report)
-                    report["ops"]["compose"] += 1
+                    if i % 2 == 0:
+                        self.op2_compose(entry, other, report)
+                        report["ops"]["compose"] += 1
+                    else:
+                        self.op3_chain(entry, other, report)
+                        report["ops"]["chain"] += 1
                     spent += 1
             i += 1
         return report
