@@ -77,7 +77,10 @@
 * Beats Kev-0.8B base (0.855/0.230) AND our fine-tune w/o temp (0.880/0.204) zero-shot. **Laya takes the routing-judge seat**; Kev-FT+T1.9 stays as fallback/ensemble candidate. Calibration: confidence here is well-behaved out of the box (their temp warning noted, our sweep confirms).
 * Ops quirks: `laya-serve` binds :8000 regardless of flags (conflicts with demo API — run demo elsewhere); first run downloads ~421M checkpoint.
 
-## Open gates
+## 2026-10-02 · Tic-tac-toe lab (`scripts/tictactoe.py`, minimax oracle)
+
+* 200 games vs random: win=0.80 loss=0.14 draw=0.07, minimax_agree=0.708 (0.68→0.71 climbing), 176 entries (canonical symmetries).
+* Mechanism visible: coverage IS learning; explore=0.3 caps agreement by design. Next: watch mode (terminal live board, then pygame).
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
