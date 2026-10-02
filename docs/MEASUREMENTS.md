@@ -82,6 +82,8 @@
 * 200 games vs random: win=0.80 loss=0.14 draw=0.07, minimax_agree=0.708 (0.68→0.71 climbing), 176 entries (canonical symmetries).
 * Mechanism visible: coverage IS learning; explore=0.3 caps agreement by design. Next: watch mode (terminal live board, then pygame).
 
+## Open gates
+
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
