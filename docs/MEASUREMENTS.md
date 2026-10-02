@@ -102,6 +102,8 @@
 * Qwen-1.5B temp 0.8, 40 traces (20 cases × 2): correct=**8/40**, novel skeletons 8/8 correct, 6 entries. Yield 20%.
 * Reading: reasoning quality decent (right formulas), failures are format/arithmetic slips. Verdict: PARTIAL PASS as autonomous background feed (overnight accumulation of verified traces), FAIL as on-demand reasoner. Next levers: lower temp + best-of-N consensus, better format prompts.
 
+## Open gates
+
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
