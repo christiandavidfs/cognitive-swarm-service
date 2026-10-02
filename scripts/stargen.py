@@ -52,6 +52,12 @@ def extract_answer(trace: str):
     m = re.findall(r"ANSWER:\s*(-?\d+)", trace)
     if m:
         return int(m[-1])
+    m = re.findall(r"[Aa]nswer is (-?\d+)", trace)
+    if m:
+        return int(m[-1])
+    m = re.findall(r"=\s*(-?\d+)[.\s]*$", trace.strip())
+    if m:
+        return int(m[-1])
     nums = re.findall(r"-?\d+", trace)
     return int(nums[-1]) if nums else None
 
@@ -59,6 +65,8 @@ def extract_answer(trace: str):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--per", type=int, default=4)
+    ap.add_argument("--cases", type=int, default=3,
+                    help="cases per family (bigger battery, less noise)")
     ap.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
     ap.add_argument("--mem", default="data/stargen_memory.json")
     ap.add_argument("--seed", type=int, default=11)
@@ -78,10 +86,10 @@ def main():
     t0 = time.time()
     for tmpl, fn, fam in BATTERY:
         if fam == "handshake":
-            cases = [{"n": rng.randint(20, 200)} for _ in range(3)]
+            cases = [{"n": rng.randint(20, 200)} for _ in range(args.cases)]
         else:
             cases = []
-            for _ in range(3):
+            while len(cases) < args.cases:
                 n1, t1, t2 = rng.randint(4, 30), rng.randint(5, 30), rng.randint(2, 10)
                 if (n1 * t1) % t2 == 0:
                     cases.append({"n1": n1, "t1": t1, "t2": t2})
