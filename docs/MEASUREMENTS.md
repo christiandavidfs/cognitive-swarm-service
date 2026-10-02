@@ -79,8 +79,10 @@
 
 ## 2026-10-02 · Tic-tac-toe lab (`scripts/tictactoe.py`, minimax oracle)
 
-* 200 games vs random: win=0.80 loss=0.14 draw=0.07, minimax_agree=0.708 (0.68→0.71 climbing), 176 entries (canonical symmetries).
-* Mechanism visible: coverage IS learning; explore=0.3 caps agreement by design. Next: watch mode (terminal live board, then pygame).
+* v1 (buggy rotation): 200 games win=0.80 loss=0.14 agree=0.68→0.71, 176 entries.
+* **Rotation bug found by a 5-game watch run** (agree 0.36 with 181 entries): canonical key rotated the board but moves stayed in original frame. Fixed (canonical-frame moves both ways) → user-measured agree 0.36→0.88.
+* v2 (fixed, clean memory): 200 games win=**0.86** loss=**0.08** agree=0.66 (band noise + explore=0.3 cap; correctness fix proven by the 0.36→0.88 jump, not by the average).
+* Watch mode: `--watch 0.4` live board + minimax ✓/✗ markers.
 
 ## Open gates
 
