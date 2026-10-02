@@ -80,6 +80,10 @@ def main():
     ap.add_argument("--per", type=int, default=4)
     ap.add_argument("--cases", type=int, default=3,
                     help="cases per family (bigger battery, less noise)")
+    ap.add_argument("--samples", type=int, default=1,
+                    help="best-of-N: samples per question, majority verified answer wins (1 = off)")
+    ap.add_argument("--quorum", type=int, default=0,
+                    help="min votes for consensus (0 = strict majority)")
     ap.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
     ap.add_argument("--mem", default="data/stargen_memory.json")
     ap.add_argument("--seed", type=int, default=11)
@@ -111,18 +115,43 @@ def main():
             if exp is None:
                 continue
             q = tmpl.format(**kw)
-            for _ in range(args.per):
-                total += 1
-                tr = gen_trace(model, tok, q)
-                got = extract_answer(tr)
-                if got == exp:
+            if args.samples <= 1:
+                cand = [(gen_trace(model, tok, q), None) for _ in range(args.per)]
+                for tr, _ in cand:
+                    total += 1
+                    got = extract_answer(tr)
+                    if got == exp:
+                        correct += 1
+                        sig = _procedure_sig(tr)
+                        if sig not in known:
+                            novel += 1
+                            known.add(sig)
+                        store.remember_trace(q, tr[:600], str(exp), tier=f"stargen-{fam}",
+                                            confidence=0.9)
+            else:
+                # best-of-N: sample N, majority extracted answer wins; archive ONE
+                # representative trace IFF the majority verifies against formula.
+                votes = []
+                traces = []
+                for _ in range(args.samples):
+                    total += 1
+                    tr = gen_trace(model, tok, q)
+                    traces.append(tr)
+                    votes.append(extract_answer(tr))
+                tally: dict = {}
+                for v in votes:
+                    tally[v] = tally.get(v, 0) + 1
+                quorum = args.quorum or (args.samples // 2 + 1)
+                top, n_top = max(tally.items(), key=lambda kv: (kv[1], kv[0] is not None))
+                if top is not None and n_top >= quorum and top == exp:
                     correct += 1
-                    sig = _procedure_sig(tr)
+                    rep = next(t for t, v in zip(traces, votes) if v == top)
+                    sig = _procedure_sig(rep)
                     if sig not in known:
                         novel += 1
                         known.add(sig)
-                    store.remember_trace(q, tr[:600], str(exp), tier=f"stargen-{fam}",
-                                        confidence=0.9)
+                    store.remember_trace(q, rep[:600], str(exp), tier=f"stargen-{fam}",
+                                        confidence=round(0.5 + 0.5 * n_top / args.samples, 2))
     dt = time.time() - t0
     print(f"\ncorrect={correct}/{total} novel_skeletons={novel} "
           f"novelty_rate={novel / max(total, 1):.3f} entries={store.size()} ({dt:.0f}s)")
