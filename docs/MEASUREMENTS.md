@@ -87,7 +87,10 @@
 * v2 (fixed, clean memory): 200 games win=**0.86** loss=**0.08** agree=0.66 (band noise + explore=0.3 cap; correctness fix proven by the 0.36→0.88 jump, not by the average).
 * Watch mode: `--watch 0.4` live board + minimax ✓/✗ markers.
 
-## Open gates
+## 2026-10-02 · GBIF slow-domain pilot (`scripts/pilot_gbif.py`, Barn Swallow ES)
+
+* Arrival month (5%-of-peak) 2015–2025, walk-forward per year: procedure/mean/persist MAE=**0.25/0.25/0.25** (tie over 8 years).
+* Reading: task too stable to discriminate (wintering records flatten the signal) — pipeline validated end-to-end (fetch→procedure→verify→walk-forward), methods untied. Next: sharper species/region or stricter arrival definition (first steep increase, not 5% threshold).
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
