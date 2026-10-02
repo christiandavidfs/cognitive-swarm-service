@@ -81,3 +81,49 @@ def test_blind_spots_recorded_never_archived():
     rep = eng.run()
     assert rep["blind_spots"] >= 1
     assert all("lions" not in (e.get("trace") or "") for e in s.entries.values())
+
+
+class FakeTwo(ResolverBackend):
+    """handshake N + take-away apples, to exercise chaining."""
+    name = "two"
+
+    def classify(self, question: str):
+        from service.contracts import TaskType
+        return TaskType.UNKNOWN
+
+    def solve(self, question: str):
+        import re
+        m = re.search(r"handshake (\d+)", question.lower())
+        if m:
+            n = int(m.group(1))
+            ans = str(n * (n - 1) // 2)
+            return BackendAnswer(answer=ans, tier="reasoning-primitives",
+                                 pattern="handshake", args={"n": n},
+                                 trace=f"handshake n={n} -> {ans}")
+        m = re.search(r"take (\d+) apples", question.lower())
+        if m:
+            n = int(m.group(1))
+            return BackendAnswer(answer=str(n), tier="reasoning-primitives",
+                                 pattern="take", args={"n": n},
+                                 trace=f"take n={n} -> {n}")
+        return None
+
+
+def test_op3_chain_synthesizes_new_procedure():
+    from service.jobs.curiosity import CuriosityEngine
+    s = ProcedureStore(path=str(Path(tempfile.mkdtemp()) / "m.json"))
+    s.remember_trace("handshake 10 blarg", "handshake n=10 -> 45", "45",
+                     tier="reasoning-primitives")
+    s.remember_trace("take 4 apples xyz", "take n=4 -> 4", "4",
+                     tier="reasoning-primitives")
+    eng = CuriosityEngine(s, backends=[FakeTwo()], budget_per_run=6, seed=1)
+    rep = eng.run()
+    chains = [e for e in s.entries.values()
+              if (e.get("trace") or "").startswith("CHAIN")]
+    assert rep["ops"]["chain"] >= 1
+    assert len(chains) >= 1
+    ch = chains[0]
+    assert "THEN" in ch["trace"] and ch["tier"] == "chain"
+    # chain skeleton is NEW (neither parent's sig)
+    sigs = {e.get("procedure_sig") for e in s.entries.values()}
+    assert ch["procedure_sig"] in sigs and len(sigs) >= 3
