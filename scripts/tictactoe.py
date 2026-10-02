@@ -31,8 +31,22 @@ _SYMS = [(0, 1, 2, 3, 4, 5, 6, 7, 8), (6, 3, 0, 7, 4, 1, 8, 5, 2),
          (0, 3, 6, 1, 4, 7, 2, 5, 8), (8, 5, 2, 7, 4, 1, 6, 3, 0)]
 
 
-def canonical(board: str) -> str:
-    return min("".join(board[i] for i in s) for s in _SYMS)
+def canonical(board: str) -> tuple:
+    """Canonical board + the symmetry achieving it (to map moves across rotations)."""
+    best, perm = None, None
+    for s in _SYMS:
+        cand = "".join(board[i] for i in s)
+        if best is None or cand < best:
+            best, perm = cand, s
+    return best, perm
+
+
+def to_canonical_move(move: int, perm) -> int:
+    return perm.index(move)
+
+
+def from_canonical_move(cmove: int, perm) -> int:
+    return perm[cmove]
 
 
 def winner(board: str):
@@ -74,19 +88,21 @@ def play_game(store: ProcedureStore, rng: random.Random, explore: float = 0.3,
     while winner(board) is None:
         empt = [i for i, c in enumerate(board) if c == "."]
         if board.count("X") == board.count("O"):  # X to move (system)
-            key = f"ttt:{canonical(board)}:X"
+            canon, perm = canonical(board)
+            key = f"ttt:{canon}:X"
             rec = store.lookup(key)
             if rec is not None and rng.random() > explore:
-                mv = int(rec["answer"])
+                mv = from_canonical_move(int(rec["answer"]), perm)
                 if board[mv] != ".":
                     mv = None
             else:
                 mv = None
             _, opt = minimax(board, "X")
-            if mv is None:  # consult oracle, learn
+            if mv is None:  # consult oracle, learn (store move in canonical frame)
                 mv = opt if rng.random() > explore else rng.choice(empt)
-                store.remember_trace(key, f"ttt {canonical(board)} X->{mv} (minimax {opt})",
-                                     str(mv), tier="game", confidence=0.9)
+                cmv = to_canonical_move(mv, perm)
+                store.remember_trace(key, f"ttt {canon} X->{cmv} (minimax {opt})",
+                                     str(cmv), tier="game", confidence=0.9)
             agrees += mv == opt
             moves += 1
             trace.append((key, mv, opt))
