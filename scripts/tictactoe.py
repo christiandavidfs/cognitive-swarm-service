@@ -62,11 +62,15 @@ def minimax(board: str, player: str) -> tuple:
     return best, move
 
 
-def play_game(store: ProcedureStore, rng: random.Random, explore: float = 0.3):
+def play_game(store: ProcedureStore, rng: random.Random, explore: float = 0.3,
+              watch: bool = False, delay: float = 0.0):
     """System (X, memory-guided) vs random (O). Returns (result, minimax_agreements, moves)."""
+    import time as _time
     board = "........."
     agrees = moves = 0
     trace = []
+    if watch:
+        print(render(board))
     while winner(board) is None:
         empt = [i for i, c in enumerate(board) if c == "."]
         if board.count("X") == board.count("O"):  # X to move (system)
@@ -87,9 +91,17 @@ def play_game(store: ProcedureStore, rng: random.Random, explore: float = 0.3):
             moves += 1
             trace.append((key, mv, opt))
             board = board[:mv] + "X" + board[mv + 1:]
+            if watch:
+                _time.sleep(delay)
+                print(f"\nX plays {mv} (minimax: {opt} {'✓' if mv == opt else '✗'})")
+                print(render(board))
         else:
             mv = rng.choice(empt)
             board = board[:mv] + "O" + board[mv + 1:]
+            if watch:
+                _time.sleep(delay)
+                print(f"\nO plays {mv} (random)")
+                print(render(board))
     result = winner(board)
     for key, mv, opt in trace:  # outcomes feed success rates
         try:
@@ -99,22 +111,37 @@ def play_game(store: ProcedureStore, rng: random.Random, explore: float = 0.3):
     return result, agrees / max(moves, 1), moves
 
 
+def render(board: str) -> str:
+    rows = []
+    for r in range(3):
+        rows.append(" " + " | ".join(board[r * 3 + c].replace(".", " ") for c in range(3)))
+    return "\n---+---+---\n".join(rows)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--games", type=int, default=200)
     ap.add_argument("--explore", type=float, default=0.3)
     ap.add_argument("--mem", default="data/ttt_memory.json")
+    ap.add_argument("--watch", type=float, default=0.0,
+                    help="seconds between moves; renders every board live (0 = off)")
     args = ap.parse_args()
 
     store = ProcedureStore(path=_REPO / args.mem)
     rng = random.Random(7)
     res = {"X": 0, "O": 0, "draw": 0}
     agree = 0
+    watch = args.watch > 0
     for g in range(1, args.games + 1):
-        r, a, _ = play_game(store, rng, explore=args.explore)
+        if watch:
+            print(f"\n=== game {g} ===")
+        r, a, _ = play_game(store, rng, explore=args.explore,
+                            watch=watch, delay=args.watch)
         res[r] += 1
         agree += a
-        if g % 50 == 0:
+        if watch:
+            print(f"result: {r}  minimax_agree_so_far={agree / g:.2f}")
+        elif g % 50 == 0:
             print(f"[{g}] W={res['X']} L={res['O']} D={res['draw']} "
                   f"minimax_agree={agree / g:.2f} entries={store.size()}", flush=True)
     print(f"\nFINAL {args.games} games: win={res['X'] / args.games:.2f} "
