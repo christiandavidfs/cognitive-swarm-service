@@ -202,10 +202,12 @@ def results():
 
 @app.get("/results/{name}")
 def results_board(name: str):
-    from service.results import board, BOARDS
+    from service.results import board, verdict, BOARDS
     if name not in BOARDS:
         raise HTTPException(404, detail=f"unknown board {name!r}. Available: {sorted(BOARDS)}")
-    return board(name)
+    b = board(name)
+    b["verdict"] = verdict(name)
+    return b
 
 @app.get("/board", response_class=None)
 def board_html():
