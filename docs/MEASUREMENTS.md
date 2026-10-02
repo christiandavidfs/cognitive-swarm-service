@@ -92,6 +92,8 @@
 * Arrival month (5%-of-peak) 2015–2025, walk-forward per year: procedure/mean/persist MAE=**0.25/0.25/0.25** (tie over 8 years).
 * Reading: task too stable to discriminate (wintering records flatten the signal) — pipeline validated end-to-end (fetch→procedure→verify→walk-forward), methods untied. Next: sharper species/region or stricter arrival definition (first steep increase, not 5% threshold).
 
+## Open gates
+
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
