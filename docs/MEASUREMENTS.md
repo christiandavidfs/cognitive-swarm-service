@@ -102,6 +102,11 @@
 * Qwen-1.5B temp 0.8, 40 traces (20 cases × 2): correct=**8/40**, novel skeletons 8/8 correct, 6 entries. Yield 20%.
 * Reading: reasoning quality decent (right formulas), failures are format/arithmetic slips. Verdict: PARTIAL PASS as autonomous background feed (overnight accumulation of verified traces), FAIL as on-demand reasoner. Next levers: lower temp + best-of-N consensus, better format prompts.
 
+## 2026-10-02 · Judge-as-verifier (`scripts/judge_verify.py`, 10 traces)
+
+* Kev-0.8B Noul("is this arithmetic correct?"): agreement **5/10 = chance**, p≈0.80 to EVERYTHING right or wrong. The judge pattern-matches math-looking text, doesn't check it.
+* Verdict: FAIL — small judges do NOT verify; debate-as-verifier dead at 0.8B. Formulas stay the only arithmetic oracle. (Retest gate: Laya/OpenDecider on same battery.)
+
 ## Open gates
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
