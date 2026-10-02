@@ -97,7 +97,10 @@
 * NL → ReAct (budget 6) → service tools → answer. Measured: pikachu→electric 1 call; rounds board → NL summary 1 call. Fixes needed: fence-less tool syntax accepted, first-output-must-be-tool few-shots, forced-resolve safety net (1/3 clean without them).
 * Division honored: model routes/translates, service knows. v2 = connector drafts for human approval.
 
-## Open gates
+## 2026-10-02 · StarGen (`scripts/stargen.py`, generate→verify→conserve)
+
+* Qwen-1.5B temp 0.8, 40 traces (20 cases × 2): correct=**8/40**, novel skeletons 8/8 correct, 6 entries. Yield 20%.
+* Reading: reasoning quality decent (right formulas), failures are format/arithmetic slips. Verdict: PARTIAL PASS as autonomous background feed (overnight accumulation of verified traces), FAIL as on-demand reasoner. Next levers: lower temp + best-of-N consensus, better format prompts.
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
