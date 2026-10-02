@@ -53,3 +53,14 @@ def test_sandbox_scrubs_secrets(monkeypatch):
     monkeypatch.setenv("MY_API_KEY", "shh")
     env = _scrubbed_env()
     assert "MY_API_KEY" not in env
+
+
+def test_coach_specs_cover_present_and_future():
+    import sys
+    sys.path.insert(0, "scripts")
+    import connect
+    assert set(connect.spec_for("confluence")["secret_env"]) == {"CONFLUENCE_API_TOKEN"}
+    z = connect.spec_for("zephyr")  # no connector file yet — spec-ready anyway
+    assert "ZEPHYR_API_TOKEN" in z["secret_env"]
+    g = connect.spec_for("pokeapi")
+    assert g["env"] == [] and "pikachu" in g["probe"]
