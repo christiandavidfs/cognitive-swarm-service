@@ -45,7 +45,20 @@ def gen_trace(model, tok, q: str, temp: float = 0.8) -> str:
     with torch.no_grad():
         out = model.generate(**ids, max_new_tokens=320, do_sample=True,
                              temperature=temp, pad_token_id=tok.eos_token_id)
-    return tok.decode(out[0][ids["input_ids"].shape[1]:], skip_special_tokens=True)
+    trace = tok.decode(out[0][ids["input_ids"].shape[1]:], skip_special_tokens=True)
+    # Pass 2 (format forcing): short greedy extraction — reasoning stays free,
+    # the answer tag is constrained. Fixes the #1 failure mode (no ANSWER tag).
+    probe = (text + trace + "\nNow reply with ONLY the final line in exactly "
+             "this format: ANSWER: <integer>\nANSWER:")
+    pids = tok([probe], return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        out2 = model.generate(**pids, max_new_tokens=12, do_sample=False,
+                              pad_token_id=tok.eos_token_id)
+    tag = tok.decode(out2[0][pids["input_ids"].shape[1]:], skip_special_tokens=True)
+    m = re.findall(r"(-?\d+)", tag)
+    if m:
+        trace = trace.rstrip() + f"\nANSWER: {m[-1]}"
+    return trace
 
 
 def extract_answer(trace: str):
