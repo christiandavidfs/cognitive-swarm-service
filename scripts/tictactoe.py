@@ -77,8 +77,12 @@ def minimax(board: str, player: str) -> tuple:
 
 
 def play_game(store: ProcedureStore, rng: random.Random, explore: float = 0.3,
-              watch: bool = False, delay: float = 0.0):
-    """System (X, memory-guided) vs random (O). Returns (result, minimax_agreements, moves)."""
+              watch: bool = False, delay: float = 0.0, opponent: str = "random",
+              opp_noise: float = 1.0):
+    """System (X, memory-guided) vs `opponent` (O): random | minimax(+noise).
+
+    Minimax opponent plays optimally except flips to random with prob opp_noise
+    (noise=1.0 → random play; 0.0 → perfect). Returns (result, agreements, moves)."""
     import time as _time
     board = "........."
     agrees = moves = 0
@@ -112,11 +116,14 @@ def play_game(store: ProcedureStore, rng: random.Random, explore: float = 0.3,
                 print(f"\nX plays {mv} (minimax: {opt} {'✓' if mv == opt else '✗'})")
                 print(render(board))
         else:
-            mv = rng.choice(empt)
+            if opponent == "minimax" and rng.random() > opp_noise:
+                _, mv = minimax(board, "O")
+            else:
+                mv = rng.choice(empt)
             board = board[:mv] + "O" + board[mv + 1:]
             if watch:
                 _time.sleep(delay)
-                print(f"\nO plays {mv} (random)")
+                print(f"\nO plays {mv} ({opponent})")
                 print(render(board))
     result = winner(board)
     for key, mv, opt in trace:  # outcomes feed success rates
@@ -141,6 +148,12 @@ def main():
     ap.add_argument("--mem", default="data/ttt_memory.json")
     ap.add_argument("--watch", type=float, default=0.0,
                     help="seconds between moves; renders every board live (0 = off)")
+    ap.add_argument("--opponent", default="random", choices=["random", "minimax"],
+                    help="O player: random or minimax(+noise)")
+    ap.add_argument("--opp-noise", type=float, default=1.0,
+                    help="minimax opponent randomness (1.0=random, 0.0=perfect)")
+    ap.add_argument("--explore-end", type=float, default=None,
+                    help="linear explore decay target by final game (None = const)")
     args = ap.parse_args()
 
     store = ProcedureStore(path=_REPO / args.mem)
@@ -149,10 +162,14 @@ def main():
     agree = 0
     watch = args.watch > 0
     for g in range(1, args.games + 1):
+        ex = args.explore
+        if args.explore_end is not None and args.games > 1:
+            ex = args.explore + (args.explore_end - args.explore) * (g - 1) / (args.games - 1)
         if watch:
-            print(f"\n=== game {g} ===")
-        r, a, _ = play_game(store, rng, explore=args.explore,
-                            watch=watch, delay=args.watch)
+            print(f"\n=== game {g} (explore={ex:.2f}) ===")
+        r, a, _ = play_game(store, rng, explore=ex,
+                            watch=watch, delay=args.watch,
+                            opponent=args.opponent, opp_noise=args.opp_noise)
         res[r] += 1
         agree += a
         if watch:

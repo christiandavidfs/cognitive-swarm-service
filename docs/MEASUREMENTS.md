@@ -77,7 +77,10 @@
 * Beats Kev-0.8B base (0.855/0.230) AND our fine-tune w/o temp (0.880/0.204) zero-shot. **Laya takes the routing-judge seat**; Kev-FT+T1.9 stays as fallback/ensemble candidate. Calibration: confidence here is well-behaved out of the box (their temp warning noted, our sweep confirms).
 * Ops quirks: `laya-serve` binds :8000 regardless of flags (conflicts with demo API — run demo elsewhere); first run downloads ~421M checkpoint.
 
-## 2026-10-02 · Tic-tac-toe lab (`scripts/tictactoe.py`, minimax oracle)
+## 2026-10-02 · Mastery test (`--opponent minimax --opp-noise 0.5 --explore 0.3→0`)
+
+* 200 games vs half-perfect: win=0.56 loss=0.16 draw=0.28 (unbeaten 0.84), agree=0.647, draws climbing 0.23→0.28 as explore decays.
+* Reading: agreement understates strength (many non-losing moves ≠ minimax move); unbeaten rate is the honest metric. Gate: PASS → merged.
 
 * v1 (buggy rotation): 200 games win=0.80 loss=0.14 agree=0.68→0.71, 176 entries.
 * **Rotation bug found by a 5-game watch run** (agree 0.36 with 181 entries): canonical key rotated the board but moves stayed in original frame. Fixed (canonical-frame moves both ways) → user-measured agree 0.36→0.88.
