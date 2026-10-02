@@ -92,6 +92,11 @@
 * Arrival month (5%-of-peak) 2015–2025, walk-forward per year: procedure/mean/persist MAE=**0.25/0.25/0.25** (tie over 8 years).
 * Reading: task too stable to discriminate (wintering records flatten the signal) — pipeline validated end-to-end (fetch→procedure→verify→walk-forward), methods untied. Next: sharper species/region or stricter arrival definition (first steep increase, not 5% threshold).
 
+## 2026-10-02 · Ask intermediary v1 (`scripts/ask.py`, Qwen2.5-1.5B local, read-only tools)
+
+* NL → ReAct (budget 6) → service tools → answer. Measured: pikachu→electric 1 call; rounds board → NL summary 1 call. Fixes needed: fence-less tool syntax accepted, first-output-must-be-tool few-shots, forced-resolve safety net (1/3 clean without them).
+* Division honored: model routes/translates, service knows. v2 = connector drafts for human approval.
+
 ## Open gates
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
