@@ -36,6 +36,7 @@ def _load_builtins():
     from .postgres import PostgresRetriever
     from .generic_http import GenericHTTPRetriever
     from .pokeapi import PokeAPIConnector
+    from .search import SearchConnector
 
     return {
         "wikidata": WikidataRetriever,
@@ -48,6 +49,7 @@ def _load_builtins():
         "postgres": PostgresRetriever,
         "generic_http": GenericHTTPRetriever,
         "pokeapi": PokeAPIConnector,
+        "search": SearchConnector,
     }
 
 _BUILTINS: Optional[Dict[str, type]] = None
