@@ -72,7 +72,7 @@ Director (orquestador pequeño: aprende política de ruteo con outcomes, tras lo
 
 ## Conventions
 
-* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `77/77`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved. CI (`.github/workflows/ci.yml`) runs the same on push.
+* After **every** change: `py_compile` all touched packages + `pytest -q` (must stay `78/78`+) + update this file + `docs/ARCHITECTURE_JUDGMENTS.md` if architecture moved. CI (`.github/workflows/ci.yml`) runs the same on push.
 * **Architecture freeze**: no new layer/module without a measurement showing existing layers fail it. Dogfood first (this repo's own issues/traffic as pilot data).
 * **Ontology stability**: `TaskType`/families are versioned priors, not truth. Taxonomy changes require re-running all gates; sig-based identity never breaks.
 * **Vendor independence**: Kev pinned by revision + checksums where served; judge seam keeps Heuristic/Jev/Kev interchangeable (`judge.backend`). No single-vendor code paths — ever.

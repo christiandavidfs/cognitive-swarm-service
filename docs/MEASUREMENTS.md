@@ -93,3 +93,7 @@
 * Laya fine-tune on own labels (export tooling exists on develop; 400+ rows needed) + Laya vs Kev-FT ensemble test.
 * Jev-paid vs best local judge on OUR decisions (needs paid key; the script is ready).
 * Federated process learning PoC (two local instances sharing only `procedure_sig`s).
+
+## 2026-10-02 · Curiosity op3 chain (procedure synthesis)
+
+* `op3_chain` builds A-THEN-B combined traces verified end-to-end, archived under NEW chain skeletons (`tier: chain`). Tested: chain archived with distinct sig from both parents. Run loop alternates compose/chain. `78/78` green.
