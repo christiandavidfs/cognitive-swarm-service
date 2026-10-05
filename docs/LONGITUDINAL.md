@@ -6,7 +6,7 @@
 | # | Date | Focus | Row (filled on review) |
 |---|------|-------|------------------------|
 | 0 | 2026-10-01 (baseline, manual) | v1 set | acc=0.50 answered=0.50 contested_ok=1 |
-| 1 | 2026-10-05 | first auto row | — |
+| 1 | 2026-10-05 | first auto row | acc=0.50 answered=0.50 contested_ok=1 entries=59 (flat vs baseline, honesty intact; memory saturated on fixed set — expected) |
 | 2 | 2026-10-12 | memory saturation check | — |
 | 3 | 2026-10-19 | evolve set → v2 (new contested items) | — |
 | 4 | 2026-10-26 | slope reading (first trend) | — |
