@@ -75,6 +75,25 @@ def extract_answer(trace: str):
     return int(nums[-1]) if nums else None
 
 
+def judge_scores(base_url: str, traces: list) -> list:
+    """Loop judge: Score(plausible reasoning 0..2) per trace. Failures → -1."""
+    import requests
+    out = []
+    for tr in traces:
+        try:
+            r = requests.post(f"{base_url}/v1/systemone",
+                              json={"state": tr[:800], "model": "judge",
+                                    "questions": {"ok": {
+                                        "type": "score",
+                                        "instructions": "Is this a plausible step-by-step solution?",
+                                        "criteria": ["no", "partly", "yes"]}}},
+                              timeout=30).json()
+            out.append(float(r["answers"]["ok"].get("score", 0)))
+        except Exception:
+            out.append(-1.0)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--per", type=int, default=4)
@@ -84,6 +103,10 @@ def main():
                     help="best-of-N: samples per question, majority verified answer wins (1 = off)")
     ap.add_argument("--quorum", type=int, default=0,
                     help="min votes for consensus (0 = strict majority)")
+    ap.add_argument("--rerank", type=int, default=0,
+                    help="hybrid: score N candidates with judge Score(plausible), keep top-M, verify by formula")
+    ap.add_argument("--judge-url", default="http://127.0.0.1:8021",
+                    help="SystemOne judge for --rerank (Laya CPU)")
     ap.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
     ap.add_argument("--mem", default="data/stargen_memory.json")
     ap.add_argument("--seed", type=int, default=11)
@@ -115,7 +138,24 @@ def main():
             if exp is None:
                 continue
             q = tmpl.format(**kw)
-            if args.samples <= 1:
+            if args.rerank > 0:
+                # Hybrid: loop judge ranks plausibility, formula decides truth.
+                cand = [gen_trace(model, tok, q) for _ in range(max(args.samples, 2))]
+                total += len(cand)
+                scores = judge_scores(args.judge_url, cand)
+                order = sorted(range(len(cand)), key=lambda i: scores[i], reverse=True)
+                for i in order[: args.rerank]:
+                    tr, got = cand[i], extract_answer(cand[i])
+                    if got == exp:
+                        correct += 1
+                        sig = _procedure_sig(tr)
+                        if sig not in known:
+                            novel += 1
+                            known.add(sig)
+                        store.remember_trace(q, tr[:600], str(exp), tier=f"stargen-{fam}",
+                                            confidence=0.9)
+                        break
+            elif args.samples <= 1:
                 cand = [(gen_trace(model, tok, q), None) for _ in range(args.per)]
                 for tr, _ in cand:
                     total += 1
