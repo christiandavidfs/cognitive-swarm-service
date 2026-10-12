@@ -111,6 +111,11 @@
 
 * 10-07 market + 10-10 formations hit DNS failures at 06:00 (no network) and logged empty `n=0` rows. Fixed: `service/net.py` shared fetch with backoff; scheduled scripts skip archiving empty rows (outage → cron log only, n=0 row purged). `79/79` green.
 
+## 2026-10-02 · Hybrid rerank (loop judge + formula, `feat/stargen-hybrid`)
+
+* 12 cases × 4 candidates, Laya-CPU scores plausibility, top-2 verified by formula: **9/12 questions solved**, 9 novel skeletons archived.
+* Reading: rerank can't create correctness, but raises precision-per-archive (only verified top-2 enters LTM). Full hybrid stack runs (Qwen GPU + Laya CPU + formula). Ops lesson: VRAM contention (Kev+Laya+Qwen) — Laya forced to CPU via CUDA_VISIBLE_DEVICES, Kev stopped during runs.
+
 ## Open gates
 
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
