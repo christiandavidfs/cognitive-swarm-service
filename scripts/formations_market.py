@@ -36,9 +36,8 @@ COST = 0.001  # round-trip fraction
 
 
 def closes(sym: str):
-    d = requests.get(
-        f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=4mo",
-        headers=UA, timeout=20).json()["chart"]["result"][0]
+    from service.net import fetch_json
+    d = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=4mo")["chart"]["result"][0]
     return [c for c in d["indicators"]["quote"][0]["close"] if c]
 
 
@@ -122,6 +121,9 @@ def main():
         if s["n"] >= 2:
             print(f"  {f:12} P(up)={s['up'] / s['n']:.2f} n={s['n']} "
                   f"pred={s['pred_won']}/{s['pred_n']}")
+    if settled_obs == 0 and made == 0 and not mem["pending"]:
+        print("feed outage: nothing fetched, row NOT archived (log stays clean)")
+        return
     with open(data / "formations_log.jsonl", "a") as fh:
         fh.write(json.dumps({"date": today, "settled_pred": settled_pred, "pred_acc": pred_acc,
                              "base_rate": base_rate, "made": made,

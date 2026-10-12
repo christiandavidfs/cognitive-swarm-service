@@ -184,3 +184,21 @@ def test_solo_lexical_stays_uncertain_solo_exact_corroroborates():
         SourceClaim(source="pokeapi:x", answer="electric", reliability=0.95),
     ])
     assert v2.status == "corroborated" and v2.answer == "electric"
+
+
+def test_net_retries_then_raises_and_empty_rows_skipped():
+    from unittest.mock import patch
+    import service.net as net
+    calls = {"n": 0}
+
+    def boom(*a, **k):
+        calls["n"] += 1
+        raise ConnectionError("dns down")
+
+    with patch.object(net.requests, "get", side_effect=boom):
+        try:
+            net.fetch_json("http://x", retries=3)
+            assert False, "should raise"
+        except ConnectionError:
+            pass
+    assert calls["n"] == 3

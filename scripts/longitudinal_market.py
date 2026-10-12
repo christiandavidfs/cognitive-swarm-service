@@ -28,12 +28,12 @@ from service.corroboration import Corroborator
 from service.memory.store import ProcedureStore
 from service.router import Router
 
-UA = {"User-Agent": "Mozilla/5.0"}
+UA = {"User-Agent": "Mozilla/5.0"}  # kept for reference; scheduled fetches use service.net
 
 
 def closes(sym: str, rng: str = "3mo"):
-    d = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range={rng}",
-                     headers=UA, timeout=15).json()["chart"]["result"][0]
+    from service.net import fetch_json
+    d = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range={rng}")["chart"]["result"][0]
     return [c for c in d["indicators"]["quote"][0]["close"] if c]
 
 
@@ -94,6 +94,9 @@ def main():
            "memory_entries": mem.size()}
     print(f"{row['date']} v{row['set']}: n={total} acc={row['acc']} from_mem={from_mem} "
           f"stale={stale} stale_rate={row['stale_rate']} entries={row['memory_entries']}")
+    if total == 0:
+        print("feed outage: nothing fetched, row NOT archived (log stays clean)")
+        return
     with open(data / "market_log.jsonl", "a") as f:
         f.write(json.dumps(row) + "\n")
 
