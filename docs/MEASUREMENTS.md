@@ -111,6 +111,11 @@
 
 * 10-07 market + 10-10 formations hit DNS failures at 06:00 (no network) and logged empty `n=0` rows. Fixed: `service/net.py` shared fetch with backoff; scheduled scripts skip archiving empty rows (outage → cron log only, n=0 row purged). `79/79` green.
 
+## 2026-10-19 · Decay instrument armed (`feat/decay-timer`)
+
+* `rounds_continuous.py` upgraded: live seed (fresh pokemon draws each scheduled run; `--seed` overrides for repro), row gains `escalated_share` (share not served by memory/retrieval = the thesis's falsifiable decay metric), truth/list fetches via `service.net` backoff + no-row-on-total-outage (soup-week rule). Smoke: round1 acc=1.0 memory=0.556 retrieval=0.444 escalated=0.0 entries 64→68.
+* Timer `rounds-decay.timer` THU 06:00 (first run 2026-10-22): `--rounds 2 --n 8 --repeats 4`, log `data/rounds_log.jsonl` + `data/rounds_cron.log`. Verdict shape: on the FALSE-THESIS case memory_share flatlines LOW and escalated stays high; on the TRUE case memory_share climbs and escalated share decays. Gate: read after ~4 Thursdays (2026-11-12).
+
 ## 2026-10-02 · Hybrid rerank (loop judge + formula, `feat/stargen-hybrid`)
 
 * 12 cases × 4 candidates, Laya-CPU scores plausibility, top-2 verified by formula: **9/12 questions solved**, 9 novel skeletons archived.
@@ -118,7 +123,7 @@
 
 ## Open gates
 
-* Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
+* Escalation-decay CONTINUOUS → instrument armed 2026-10-19 (`feat/decay-timer`, THU 06:00 timer); read the curve after ~4 Thursdays (2026-11-12).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
 * **Market longitudinal** (runner + Wed timer DONE 2026-10-01): watch stale_rate decay with acc steady.
