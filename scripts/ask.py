@@ -29,10 +29,12 @@ calling TOOLS (never invent facts). Format tool calls exactly as:
 ```
 
 Available tools (JSON args like the example above, one call per block):
-- resolve: answer a factual question. Args: question (required), connectors (optional list from: pokeapi, wikidata, openalex, local_docs).
+- resolve: answer a factual question. Args: question (required), connectors (optional list from: pokeapi, wikidata, openalex, local_docs, search).
 - results: show a results board. Args: name in [longitudinal, market, formations, rounds].
 - memory: show memory stats. Args: empty object.
 - connectors: list sources. Args: empty object.
+- shell: run a JAILED shell command (read-only probes free; writes need approve true).
+  Args: command (required), approve (true only if the user explicitly allowed writes).
 
 Rules: factual questions → resolve (pick the likely connector; pokeapi only for Pokemon). "How are we doing / resultados" → results board(s). If a call fails or returns null, say so honestly and suggest what would fix it (e.g. ingest a corpus). Max {budget} tool calls, then answer with what you have, citing sources[].
 
@@ -75,6 +77,8 @@ def build_tools():
         "results": lambda a: board(a.get("name", "longitudinal")),
         "memory": lambda a: {"entries": mem.size()},
         "connectors": lambda a: [c["name"] for c in describe_registry()],
+        "shell": lambda a: __import__("service.sandbox", fromlist=["run"]).run(
+            a.get("command", ""), approve=bool(a.get("approve", False))),
     }
 
 

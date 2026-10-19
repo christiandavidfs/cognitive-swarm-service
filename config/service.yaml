@@ -92,6 +92,14 @@ connectors:
     enabled: false
     reliability: 0.95
     timeout_s: 8
+  # Web search via any SearXNG instance (self-hosted = free, no key).
+  # Hits are candidates (reliability 0.6, not independent) — truth comes
+  # from downstream corroboration + Wikidata crossing, never from search alone.
+  search:
+    enabled: false
+    reliability: 0.6
+    timeout_s: 8
+    per_page: 5
 
 # Model registry — choosable per request via `models: ["phi","qwen","minimax-m3",...]`
 # type: mlx | api (openai-compatible). MLX models load sequentially on 8GB (one at a time).
