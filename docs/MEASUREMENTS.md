@@ -131,3 +131,8 @@
 ## 2026-10-02 · Curiosity op3 chain (procedure synthesis)
 
 * `op3_chain` builds A-THEN-B combined traces verified end-to-end, archived under NEW chain skeletons (`tier: chain`). Tested: chain archived with distinct sig from both parents. Run loop alternates compose/chain. `78/78` green.
+
+## 2026-10-19 · Search-agent gate PASS (SearXNG live)
+
+* Live SearXNG (docker :8888, json limiter off): direct connector 5 real claims (Wikipedia/ESPN/FIFA, rel 0.6); through router — **answer=None, tier=conflict, 5 candidate clusters solo-voice** → search never judges, honest even with one real answer available. Sandbox live 4/4: cage cwd, write blocked -2 w/o approve, write OK approved, 0 secret leaks in env. Suite 84/84. `feat/search-agent` MERGED to main.
+* Ops: local SearXNG needs custom settings.yml (json + limiter:false); container `searxng` persistent with `--restart unless-stopped`; `SEARCH_BASE_URL=http://127.0.0.1:8888` via env (connector fails closed without it, verified).
