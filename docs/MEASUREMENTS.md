@@ -136,3 +136,10 @@
 
 * Live SearXNG (docker :8888, json limiter off): direct connector 5 real claims (Wikipedia/ESPN/FIFA, rel 0.6); through router — **answer=None, tier=conflict, 5 candidate clusters solo-voice** → search never judges, honest even with one real answer available. Sandbox live 4/4: cage cwd, write blocked -2 w/o approve, write OK approved, 0 secret leaks in env. Suite 84/84. `feat/search-agent` MERGED to main.
 * Ops: local SearXNG needs custom settings.yml (json + limiter:false); container `searxng` persistent with `--restart unless-stopped`; `SEARCH_BASE_URL=http://127.0.0.1:8888` via env (connector fails closed without it, verified).
+
+## 2026-10-19 · Federation PoC (`feat/federation-poc`) — contract measured
+
+* Design first (freeze rule): measured the pain existing layers can't solve — org B (same service code, cold procedure library) answers **0/12** on org A's pattern space (unseen numbers). Then the minimal module `service/federation.py`.
+* Battery (`scripts/poc_federation.py`, 12 questions, live seed): **B-cold 0/12 → B-federated 12/12 (+12) with zero Q/A data transferred** (leak-check CLEAN: no question text, no answers in payload — only pattern regexes + formula templates + sigs + counters). Poisoned-peer test: wrong formula used once (141 vs truth), local outcomes reject it → **revoked after 3 fails (weight 0.255)**. Trust semantics fixed en route: un-tried peer prior capped below a proven-good peer (0.85×reliability prior vs reliability×rate), so a brand-new peer can never outrank a proven one.
+* Scope honesty: this measures the CONTRACT (export/import/weight/veto) — NOT a live network. Integration into Router tiers + versioned transport between real instances remains unbuilt; next gate requires the integration itself, with orgs whose trigger is a REAL procedure gap (not a mock).
+* Tests: `91/91` (6 new federation tests: injection-reject, version-refusal, zero-leak, veto, weighting).
