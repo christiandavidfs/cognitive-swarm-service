@@ -107,7 +107,12 @@
 * Kev-0.8B Noul("is this arithmetic correct?"): agreement **5/10 = chance**, p≈0.80 to EVERYTHING right or wrong. The judge pattern-matches math-looking text, doesn't check it.
 * Verdict: FAIL — small judges do NOT verify; debate-as-verifier dead at 0.8B. Formulas stay the only arithmetic oracle. (Retest gate: Laya/OpenDecider on same battery.)
 
-## 2026-10-12 · Feed-outage hardening (week 2 incident)
+## 2026-10-19 · Judge-as-verifier retest with Laya (gate CLOSED)
+
+* Same battery (`scripts/judge_verify.py`), Laya ONNX-CPU :8021 (`JEV_VIA=typesafe TYPESAFE_BASE_URL=:8021`): **agreement 6/10 = 0.60** (Kev-0.8B measured 5/10). Pattern identical: judges rate fluency, not math — p=0.94 to falsified "2+2=5", p=0.92 to cube-64 wrong variant. Only the machines/widgets trap was caught (p=0.43).
+* Verdict: **FAIL, now doubly measured.** Small local judges (0.8B-1.5B scale) do NOT verify arithmetic — final verification stays with formulas/corroboration. Debate-as-verifier hypothesis dead at this scale; loop-judge stays only as cheap pruner (hybrid rerank 9/12 stands).
+
+## 2026-10-19 · Feed-outage hardening (week 2 incident)
 
 * 10-07 market + 10-10 formations hit DNS failures at 06:00 (no network) and logged empty `n=0` rows. Fixed: `service/net.py` shared fetch with backoff; scheduled scripts skip archiving empty rows (outage → cron log only, n=0 row purged). `79/79` green.
 
