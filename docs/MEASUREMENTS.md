@@ -118,6 +118,11 @@
 
 ## Open gates
 
+* Longitudinal set v2 (`feat/longitudinal-v2`): week-4 row (Mon 2026-10-26) is the first v2 gate; curve verdict week 8.
+* Core bug (upstream `cognitive-swarm`): `reasoning_primitives.py:126` answers **"Paris" (conf 1.0) to ANY non-France capital** ("capital of Japan/Brazil"). Must cap by known-entity; until fixed upstream, capital-X stays OUT of sets/curves here.
+* Metric incident fixed: first v2 baseline row logged `acc_anchors` inflated (fed by anchor+new hits combined, 0.833→later corrected row 0.5 pre-reseed). Log kept append-only; bad row surgically removed and documented here (only removal to date).
+* Memory-erasure incident: `pikachu`/`snorlax` entries absent from pilot_memory.json at week 3 (never in git; cause undetermined — possibly `prune()` with history). Reseeded from set gold (`pokeapi:pikachu`=electric, `pokeapi:snorlax`=21) with mirrors of the retrieval-entry schema. Every Monday run re-asks them — silent erasure would now surface as an anchor MISS.
+* Probe hygiene: probing with backends on auto-enshrines (a Japan→Paris probe re-wrote a pruned bad entry, twice). Rule: probes run against scratch stores (clone of memory to /tmp), live-memory probes only when enshrinement is intended.
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
