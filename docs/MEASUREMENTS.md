@@ -107,7 +107,12 @@
 * Kev-0.8B Noul("is this arithmetic correct?"): agreement **5/10 = chance**, p≈0.80 to EVERYTHING right or wrong. The judge pattern-matches math-looking text, doesn't check it.
 * Verdict: FAIL — small judges do NOT verify; debate-as-verifier dead at 0.8B. Formulas stay the only arithmetic oracle. (Retest gate: Laya/OpenDecider on same battery.)
 
-## 2026-10-12 · Feed-outage hardening (week 2 incident)
+## 2026-10-19 · Judge-as-verifier retest with Laya (gate CLOSED)
+
+* Same battery (`scripts/judge_verify.py`), Laya ONNX-CPU :8021 (`JEV_VIA=typesafe TYPESAFE_BASE_URL=:8021`): **agreement 6/10 = 0.60** (Kev-0.8B measured 5/10). Pattern identical: judges rate fluency, not math — p=0.94 to falsified "2+2=5", p=0.92 to cube-64 wrong variant. Only the machines/widgets trap was caught (p=0.43).
+* Verdict: **FAIL, now doubly measured.** Small local judges (0.8B-1.5B scale) do NOT verify arithmetic — final verification stays with formulas/corroboration. Debate-as-verifier hypothesis dead at this scale; loop-judge stays only as cheap pruner (hybrid rerank 9/12 stands).
+
+## 2026-10-19 · Feed-outage hardening (week 2 incident)
 
 * 10-07 market + 10-10 formations hit DNS failures at 06:00 (no network) and logged empty `n=0` rows. Fixed: `service/net.py` shared fetch with backoff; scheduled scripts skip archiving empty rows (outage → cron log only, n=0 row purged). `79/79` green.
 
@@ -118,6 +123,11 @@
 
 ## Open gates
 
+* Longitudinal set v2 (`feat/longitudinal-v2`): week-4 row (Mon 2026-10-26) is the first v2 gate; curve verdict week 8.
+* Core bug (upstream `cognitive-swarm`): `reasoning_primitives.py:126` answers **"Paris" (conf 1.0) to ANY non-France capital** ("capital of Japan/Brazil"). ~~OPEN~~ **FIXED upstream 2026-10-19** (`hotfix/stock-factual-entity` → core main `f1d4df7`): executor guards Paris to France-only questions; student TF-IDF still misfiles "capital of X" → stock_factual (conf 0.105) but now falls through to `None` → honest retrieval/debate. Bench gate 120/120 unchanged; service 79/79. Capital-X may re-enter curves once a real capital source (corroboration/wikidata) answers them rather than None.
+* Metric incident fixed: first v2 baseline row logged `acc_anchors` inflated (fed by anchor+new hits combined, 0.833→later corrected row 0.5 pre-reseed). Log kept append-only; bad row surgically removed and documented here (only removal to date).
+* Memory-erasure incident: `pikachu`/`snorlax` entries absent from pilot_memory.json at week 3 (never in git; cause undetermined — possibly `prune()` with history). Reseeded from set gold (`pokeapi:pikachu`=electric, `pokeapi:snorlax`=21) with mirrors of the retrieval-entry schema. Every Monday run re-asks them — silent erasure would now surface as an anchor MISS.
+* Probe hygiene: probing with backends on auto-enshrines (a Japan→Paris probe re-wrote a pruned bad entry, twice). Rule: probes run against scratch stores (clone of memory to /tmp), live-memory probes only when enshrinement is intended.
 * Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.

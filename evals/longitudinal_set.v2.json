@@ -1,0 +1,10 @@
+{"version": 2, "items": [
+  {"q": "What type is pikachu?", "a": "electric", "kind": "anchor-retrieval"},
+  {"q": "How tall is snorlax?", "a": "21", "kind": "anchor-retrieval"},
+  {"q": "What does print(2+3) output?", "a": "5", "kind": "anchor-deterministic"},
+  {"q": "In a group of 12 people each shakes hands with every other exactly once how many handshakes?", "a": "66", "kind": "anchor-procedure"},
+  {"q": "What caused the fall of the Roman Empire?", "a": null, "kind": "anchor-contested"},
+  {"q": "What is the capital of France?", "a": "Paris", "kind": "anchor-retrieval"},
+  {"q": "In a group of 20 people each shakes hands with every other exactly once how many handshakes?", "a": "190", "kind": "new-procedure"},
+  {"q": "What does print(7*6) output?", "a": "42", "kind": "new-deterministic"}
+]}

@@ -31,7 +31,7 @@ from service.router import Router
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--set", default="evals/longitudinal_set.v1.json")
+    ap.add_argument("--set", default="evals/longitudinal_set.v2.json")
     args = ap.parse_args()
 
     spec = json.loads((_REPO / args.set).read_text())
@@ -43,10 +43,16 @@ def main():
                     retrievers=build_retrievers(enabled_only=True),
                     backends=backends)
 
-    ok = conf = answered = total = 0
+    ok = ok_anchor = ok_new = conf = answered = total = 0
+    n_anchor = n_new = 0
     lat = 0.0
     for item in spec["items"]:
         q, exp = item["q"], item.get("a")
+        is_new = str(item.get("kind", "")).startswith("new")
+        if is_new:
+            n_new += 1
+        else:
+            n_anchor += 1
         t0 = time.time()
         try:
             r = router.resolve(q)
@@ -60,14 +66,21 @@ def main():
             continue
         if r.answer is not None:
             answered += 1
-            ok += r.answer.strip().lower() == exp.strip().lower()
+            hit = r.answer.strip().lower() == exp.strip().lower()
+            if is_new:
+                ok_new += hit
+            else:
+                ok_anchor += hit
     row = {"date": datetime.date.today().isoformat(),
            "set": spec.get("version"),
-           "n": total, "acc": round(ok / max(total, 1), 3),
+           "n": total, "acc": round((ok_anchor + ok_new) / max(total, 1), 3),
            "answered_share": round(answered / max(total, 1), 3),
            "contested_honest": conf, "lat_avg": round(lat / max(total, 1), 3),
-           "memory_entries": mem.size()}
-    print(f"{row['date']} v{row['set']}: acc={row['acc']} answered={row['answered_share']} "
+           "memory_entries": mem.size(),
+           "acc_anchors": round(ok_anchor / max(n_anchor, 1), 3),
+           "acc_new": round(ok_new / max(n_new, 1), 3)}
+    print(f"{row['date']} v{row['set']}: acc={row['acc']} anchors={row['acc_anchors']} "
+          f"new={row['acc_new']} answered={row['answered_share']} "
           f"contested_ok={conf} lat={row['lat_avg']}s entries={row['memory_entries']}")
     with open(data / "longitudinal_log.jsonl", "a") as f:
         f.write(json.dumps(row) + "\n")
