@@ -116,6 +116,11 @@
 
 * 10-07 market + 10-10 formations hit DNS failures at 06:00 (no network) and logged empty `n=0` rows. Fixed: `service/net.py` shared fetch with backoff; scheduled scripts skip archiving empty rows (outage → cron log only, n=0 row purged). `79/79` green.
 
+## 2026-10-19 · Decay instrument armed (`feat/decay-timer`)
+
+* `rounds_continuous.py` upgraded: live seed (fresh pokemon draws each scheduled run; `--seed` overrides for repro), row gains `escalated_share` (share not served by memory/retrieval = the thesis's falsifiable decay metric), truth/list fetches via `service.net` backoff + no-row-on-total-outage (soup-week rule). Smoke: round1 acc=1.0 memory=0.556 retrieval=0.444 escalated=0.0 entries 64→68.
+* Timer `rounds-decay.timer` THU 06:00 (first run 2026-10-22): `--rounds 2 --n 8 --repeats 4`, log `data/rounds_log.jsonl` + `data/rounds_cron.log`. Verdict shape: on the FALSE-THESIS case memory_share flatlines LOW and escalated stays high; on the TRUE case memory_share climbs and escalated share decays. Gate: read after ~4 Thursdays (2026-11-12).
+
 ## 2026-10-02 · Hybrid rerank (loop judge + formula, `feat/stargen-hybrid`)
 
 * 12 cases × 4 candidates, Laya-CPU scores plausibility, top-2 verified by formula: **9/12 questions solved**, 9 novel skeletons archived.
@@ -123,20 +128,20 @@
 
 ## Open gates
 
-* Longitudinal set v2 (`feat/longitudinal-v2`): week-4 row (Mon 2026-10-26) is the first v2 gate; curve verdict week 8.
+* Longitudinal set v2 (`feat/longitudinal-v2`, merged): week-4 row (Mon 2026-10-26) is the first v2 weekly gate; curve verdict week 8.
 * Core bug (upstream `cognitive-swarm`): `reasoning_primitives.py:126` answers **"Paris" (conf 1.0) to ANY non-France capital** ("capital of Japan/Brazil"). ~~OPEN~~ **FIXED upstream 2026-10-19** (`hotfix/stock-factual-entity` → core main `f1d4df7`): executor guards Paris to France-only questions; student TF-IDF still misfiles "capital of X" → stock_factual (conf 0.105) but now falls through to `None` → honest retrieval/debate. Bench gate 120/120 unchanged; service 79/79. Capital-X may re-enter curves once a real capital source (corroboration/wikidata) answers them rather than None.
 * Metric incident fixed: first v2 baseline row logged `acc_anchors` inflated (fed by anchor+new hits combined, 0.833→later corrected row 0.5 pre-reseed). Log kept append-only; bad row surgically removed and documented here (only removal to date).
 * Memory-erasure incident: `pikachu`/`snorlax` entries absent from pilot_memory.json at week 3 (never in git; cause undetermined — possibly `prune()` with history). Reseeded from set gold (`pokeapi:pikachu`=electric, `pokeapi:snorlax`=21) with mirrors of the retrieval-entry schema. Every Monday run re-asks them — silent erasure would now surface as an anchor MISS.
 * Probe hygiene: probing with backends on auto-enshrines (a Japan→Paris probe re-wrote a pruned bad entry, twice). Rule: probes run against scratch stores (clone of memory to /tmp), live-memory probes only when enshrinement is intended.
-* Escalation-decay CONTINUOUS (rounds exist; need scheduled rounds over time + curiosity).
+* Escalation-decay CONTINUOUS → instrument armed 2026-10-19 (`feat/decay-timer`, merged; THU 06:00 timer); read the curve after ~4 Thursdays (2026-11-12).
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
-* **Longitudinal learning proof** (runner + v1 set + Mon timer DONE 2026-10-01, baseline acc=0.50): needs evolving ground-truth set + curve plot.
+* **Longitudinal learning proof** (runner + v2 evolving set + Mon timer DONE): v2 set merged 2026-10-26; curve plot + week-8 verdict pending.
 * **Market longitudinal** (runner + Wed timer DONE 2026-10-01): watch stale_rate decay with acc steady.
 * **Paper-trading pilot** (PENDING): user-defined 2–3 setups, streaming loop, paper accounting (positions, costs, net P&L vs buy-and-hold), 4–8 weeks. Without costs it's fiction.
 * Kev fine-tune v2 / temperature fitted during training (post-hoc T=1.9 works; native fit is cleaner).
 * Laya fine-tune on own labels (export tooling exists on develop; 400+ rows needed) + Laya vs Kev-FT ensemble test.
 * Jev-paid vs best local judge on OUR decisions (needs paid key; the script is ready).
-* Federated process learning PoC (two local instances sharing only `procedure_sig`s).
+* Federated process learning — contract PoC measured (`feat/federation-poc`, unmerged): cold 0/12 → federated 12/12 zero-Q/A transfer, corrupted peer vetoed after 3 fails. Integration into Router tiers + versioned transport = next gate.
 
 ## 2026-10-02 · Curiosity op3 chain (procedure synthesis)
 

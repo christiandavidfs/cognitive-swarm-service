@@ -28,6 +28,7 @@ from service.connectors.base import Connector, SourceClaim
 from service.corroboration import Corroborator
 from service.jobs.curiosity import CuriosityEngine
 from service.memory.store import ProcedureStore
+from service.net import fetch_json
 from service.router import Router
 import re as _re
 
@@ -55,7 +56,7 @@ class PokeAPIConnector(Connector):
 
 
 def truth(name: str):
-    d = requests.get(f"https://pokeapi.co/api/v2/pokemon/{name}", timeout=10).json()
+    d = fetch_json(f"https://pokeapi.co/api/v2/pokemon/{name}", timeout_s=10)
     return {"type": d["types"][0]["type"]["name"],
             "height": str(d["height"]), "weight": str(d["weight"])}
 
@@ -65,6 +66,9 @@ def main():
     ap.add_argument("--rounds", type=int, default=3)
     ap.add_argument("--n", type=int, default=10)
     ap.add_argument("--repeats", type=int, default=5)
+    ap.add_argument("--seed", type=int, default=0,
+                    help="0 = live seed from today's date (fresh draws each run); "
+                         "fixed seed reproduces a specific run")
     args = ap.parse_args()
 
     data = _REPO / "data"
@@ -75,14 +79,18 @@ def main():
     curios = CuriosityEngine(mem, backends=[], budget_per_run=6)
 
     names = [p["name"] for p in
-             requests.get("https://pokeapi.co/api/v2/pokemon?limit=151", timeout=15).json()["results"]]
-    rng = random.Random(20261001)
+             fetch_json("https://pokeapi.co/api/v2/pokemon?limit=151", timeout_s=15)["results"]]
+    import datetime
+    rng = random.Random(args.seed or int(datetime.date.today().strftime("%Y%m%d")))
     kinds = [("type", "What type is {}?"), ("height", "How tall is {}?")]
     log_path = data / "rounds_log.jsonl"
 
     for rnd in range(1, args.rounds + 1):
         fresh = rng.sample([n for n in names], args.n)
         truths = {n: truth(n) for n in fresh}
+        if not truths:
+            print(f"round{rnd}: feed outage — all truth fetches failed, NO row archived")
+            continue
         new_qs = [(tmpl.format(n), truths[n][key]) for n in fresh for key, tmpl in kinds]
         old_keys = [k for k in mem.entries.keys()]
         rep_qs = [(mem.entries[k]["question"], mem.entries[k]["answer"])
@@ -102,14 +110,18 @@ def main():
                 mem_hits += 1
             elif r.tier == "retrieval":
                 retr += 1
+        none_hits = total - mem_hits - retr
         row = {"round": rnd, "n_new": len(new_qs), "n_rep": len(rep_qs),
                "acc": round(ok / max(total, 1), 3),
                "memory_share": round(mem_hits / max(total, 1), 3),
                "retrieval_share": round(retr / max(total, 1), 3),
+               # decay metric: share that needed the network or died unanswered
+               "escalated_share": round(none_hits / max(total, 1), 3),
                "lat_avg": round(lat / max(total, 1), 3),
                "memory_entries": mem.size()}
         print(f"round{rnd}: acc={row['acc']} memory={row['memory_share']} "
-              f"retrieval={row['retrieval_share']} lat={row['lat_avg']}s entries={row['memory_entries']}")
+              f"retrieval={row['retrieval_share']} escalated={row['escalated_share']} "
+              f"lat={row['lat_avg']}s entries={row['memory_entries']}")
         with open(log_path, "a") as f:
             f.write(json.dumps(row) + "\n")
     print(f"log -> {log_path} (plot memory_share/retrieval_share over rounds)")
