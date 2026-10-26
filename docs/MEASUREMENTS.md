@@ -151,3 +151,10 @@
 
 * Live SearXNG (docker :8888, json limiter off): direct connector 5 real claims (Wikipedia/ESPN/FIFA, rel 0.6); through router — **answer=None, tier=conflict, 5 candidate clusters solo-voice** → search never judges, honest even with one real answer available. Sandbox live 4/4: cage cwd, write blocked -2 w/o approve, write OK approved, 0 secret leaks in env. Suite 84/84. `feat/search-agent` MERGED to main.
 * Ops: local SearXNG needs custom settings.yml (json + limiter:false); container `searxng` persistent with `--restart unless-stopped`; `SEARCH_BASE_URL=http://127.0.0.1:8888` via env (connector fails closed without it, verified).
+
+## 2026-10-26 · Ops incident: timers ran stale code (v1 row + missing decay row)
+
+* **Symptom 1**: Monday 06:00 longitudinal ran **set v1** (acc=0.833) instead of v2, and the notify flashed a "jump" (0.5→0.833) that is NOT learning: pikachu+snorlax were reseeded on Oct 19 (erasure repair), so v1 went 3/6→5/6. Cause: the timer executes whatever is checked out in the repo dir; the repo sat on `feat/federation-poc` (forked from main), and the v2 default lives only on `feat/longitudinal-v2` — unmerged.
+* **Symptom 2**: Thursday 2026-10-22 decay run **failed with DNS outage** (`Failed to resolve 'pokeapi.co'`) and left no row. Cause: same checkout issue — main still had the OLD rounds script (no backoff, no outage guard); the fixed version lived only on `feat/decay-timer` — unmerged.
+* **Fix**: `feat/longitudinal-v2` + `feat/decay-timer` MERGED to main (docs conflicts resolved, 85/85). `longitudinal.service` now pins `--set evals/longitudinal_set.v2.json` explicitly (fails loud if the set is missing on an old checkout). Repo stays checked out on `main`; any branch switch changes timer behavior (ops rule recorded in AGENTS.md). v2 row re-ran manually today and is the official week-4 point (`docs/LONGITUDINAL.md`).
+* **Lesson**: arming a timer whose code lives on an unmerged branch is a measurement bug, not just an ops bug — the row is invalid and must be marked as such. Timers are part of the measurement contract: merge first, then arm.
