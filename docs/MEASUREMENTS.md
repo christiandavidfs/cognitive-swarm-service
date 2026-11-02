@@ -158,3 +158,15 @@
 * **Symptom 2**: Thursday 2026-10-22 decay run **failed with DNS outage** (`Failed to resolve 'pokeapi.co'`) and left no row. Cause: same checkout issue — main still had the OLD rounds script (no backoff, no outage guard); the fixed version lived only on `feat/decay-timer` — unmerged.
 * **Fix**: `feat/longitudinal-v2` + `feat/decay-timer` MERGED to main (docs conflicts resolved, 85/85). `longitudinal.service` now pins `--set evals/longitudinal_set.v2.json` explicitly (fails loud if the set is missing on an old checkout). Repo stays checked out on `main`; any branch switch changes timer behavior (ops rule recorded in AGENTS.md). v2 row re-ran manually today and is the official week-4 point (`docs/LONGITUDINAL.md`).
 * **Lesson**: arming a timer whose code lives on an unmerged branch is a measurement bug, not just an ops bug — the row is invalid and must be marked as such. Timers are part of the measurement contract: merge first, then arm.
+
+## 2026-10-29 · Decay instrument — first real row (and a metric flaw found)
+
+* THU run recovered by Persistent after boot (07:02); no outage on the day (the ConnectionError traceback in `rounds_cron.log` is Oct-22 old-code residue — new code has backoff). Rows: round1 `n_new=16 n_rep=4 acc=1.0 memory=0.2 retrieval=0.8 escalated=0.0 entries=84`; round2 `acc=1.0 memory=0.7 retrieval=0.3 escalated=0.0 entries=90`.
+* Within-run caching is real and visible: memory 0.2 → 0.7 once repeats hit (latency 0.124s → 0.040s). Cross-run comparable point: `round1 memory_share` on fresh draws = **0.2** (first of its kind; the curve to watch is its growth as the 151-pokemon pool gets covered).
+* **Flaw found (important)**: `escalated_share` counts questions answered by neither memory nor retrieval. With `BACKENDS=__none__` and a live feed every question lands in memory or retrieval → structurally **0.0**; when it moves it moves because of *outages*, not models. It does NOT measure the thesis metric (escalation-to-models). The battery is also retrieval-solvable by construction, so a model tier could never be exercised.
+* Fix (next branch, before the 2026-11-12 reading): split `memory_share_new` / `memory_share_rep`; rename `escalated_share` → `unanswered_share`; build a separate **model-escalation battery** (contested/analysis questions, debate tier ON) for the real curve. Until then read this instrument as *coverage + outage resilience*, not as the learning curve. Gate: do not claim decay/learning from a flat 0.0.
+
+## 2026-11-02 · Longitudinal week 5 (flat, set saturated)
+
+* Row: `acc=0.875 anchors=0.833 new=1.0 contested_ok=1 entries=90 lat=0.81s`. Third identical v2 point (10-19 0.875 → 10-26 0.875 → 11-02 0.875). 7/7 answerable correct, contested stays `None` → **retention + honesty confirmed; no learning signal is possible** on a fixed saturated set (every answerable item is a memory hit).
+* Ops: machine was off at 06:00; `Persistent=true` ran the probe at 10:38 on boot. The pinned `--set evals/longitudinal_set.v2.json` worked (correct set executed — the 10-26 incident fix holds).
