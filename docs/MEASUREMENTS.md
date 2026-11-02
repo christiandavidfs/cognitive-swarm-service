@@ -133,7 +133,7 @@
 * Metric incident fixed: first v2 baseline row logged `acc_anchors` inflated (fed by anchor+new hits combined, 0.833→later corrected row 0.5 pre-reseed). Log kept append-only; bad row surgically removed and documented here (only removal to date).
 * Memory-erasure incident: `pikachu`/`snorlax` entries absent from pilot_memory.json at week 3 (never in git; cause undetermined — possibly `prune()` with history). Reseeded from set gold (`pokeapi:pikachu`=electric, `pokeapi:snorlax`=21) with mirrors of the retrieval-entry schema. Every Monday run re-asks them — silent erasure would now surface as an anchor MISS.
 * Probe hygiene: probing with backends on auto-enshrines (a Japan→Paris probe re-wrote a pruned bad entry, twice). Rule: probes run against scratch stores (clone of memory to /tmp), live-memory probes only when enshrinement is intended.
-* Escalation-decay CONTINUOUS → instrument armed 2026-10-19 (`feat/decay-timer`, merged; THU 06:00 timer); read the curve after ~4 Thursdays (2026-11-12).
+* Escalation-decay CONTINUOUS → instrument revised 2026-11-02 (`feat/decay-metric`): previous rows are NOT comparable (metric invalid). The valid curve starts **Thu 2026-11-05**; read after ~4 points → **2026-12-03**. Do not call 11-12 a verdict.
 * ~~Retrieval-at-scale with distractors~~ MEASURED (solo-voice hole fixed).
 * **Longitudinal learning proof** (runner + v2 evolving set + Mon timer DONE): v2 set merged 2026-10-26; curve plot + week-8 verdict pending.
 * **Market longitudinal** (runner + Wed timer DONE 2026-10-01): watch stale_rate decay with acc steady.
@@ -178,3 +178,4 @@
 * Validation (scratch memory + log, live PokeAPI, same battery): `BACKENDS=__none__` → esc=0.571 (proc 6/6 + irr 2 escalated), acc=0.5; `BACKENDS=cognitive_swarm` → esc=0.143 (only the 2 irreducible), acc=1.0, det=0.429. The metric moves exactly with the tier it claims to measure, and retrieval answers do NOT move it (old bug pinned by test).
 * Semantics recorded: escalation can only decay to the **irreducible floor** (contested/analysis); the gap to the floor is what procedures/determinism close. `memory_share_new` is the coverage curve; `memory_share_rep` is cache (~1.0 expected). Do not read a flat escalation share at the floor as "no learning" — read `memory_share_new` for coverage.
 * Tests: 4 new (`tests/test_rounds_metrics.py`); suite **89/89**. Timer unit switched to `BACKENDS=cognitive_swarm --proc 8`; schema change is safe for `service/results.py` (reads `acc`, passes rows through).
+* **Gate date reset**: rows before 2026-11-05 used the broken metric, so they are not curve points. Valid curve starts Thu 2026-11-05; read after ~4 points → **2026-12-03**. The 11-12 date from the 10-19 entry is void.
