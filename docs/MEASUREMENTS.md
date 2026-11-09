@@ -187,3 +187,21 @@
 * **Structural finding**: on this battery the model-escalation share has **no dynamic range**. Learnable questions go to determinism/retrieval; irreducible ones go to the model. LTM learning cannot move that floor. So "escalation decays as LTM learns" needs a mechanism that reclassifies tasks into the deterministic/decomposable zone (learned procedures: curiosity op3 / distillation / federation) — or the metric must be reframed as **cost-per-decision on operational volume** (network calls + model calls + CPU per 100 decisions), which is what the commercial claim actually needs.
 * LTM composition (2026-11-09): **142 entries = 110 pokemon facts + 24 handshake + 7 print + 1 other**; 119 carry no `procedure_sig`. The cache is 77% facts, and the 31 procedure instances are mostly **dead one-off numeric instances** (random numbers never recur). Process memory is 23 sig-carrying entries. Do not call this "process memory" without a fix: stop enshrining one-off math instances, and schedule prune/audit.
 * Open decision: reframe the battery/metric (cost-per-decision + open-evolving task mix) vs build the learned-procedure leg (curiosity op3 scheduled, federation integrated). The current 151-pokemon pool **must saturate** (finite), so it cannot prove indefinite learning.
+
+## 2026-11-09 · Cost per decision (`feat/cost-per-decision`) — gate PASS
+
+* Reframe chosen after the 11-05 structural finding: measure what operations actually pay, not a model zone that is fixed by task type. Metric: **network calls + model calls + CPU per 100 decisions**, on a mix with 60% recurring volume / 20% fresh facts / 10% procedures / 10% open (contested).
+* Live run (`BACKENDS=cognitive_swarm`, scratch store, 5 rounds × 100 decisions, live PokeAPI):
+
+| round | net/100 | model/100 | external/100 | CPU ms/dec | memory | acc |
+|---|---|---|---|---|---|---|
+| 1 | 65 | 10 | **75** | 169 | 0.15 | 1.0 |
+| 2 | 37 | 10 | **47** | 66 | 0.43 | 1.0 |
+| 3 | 22 | 10 | **32** | 73 | 0.59 | 1.0 |
+| 4 | 17 | 10 | **27** | 59 | 0.64 | 1.0 |
+| 5 | 16 | 10 | **26** | 46 | 0.65 | 1.0 |
+
+* **External calls/100 decay 75 → 26 (−65%) on recurring volume**, CPU 169 → 46 ms/decision (memory hits bypass the core classifier), accuracy flat 1.0. Model calls pinned at the 10% open share — same irreducible floor measured on 11-05, now confirmed on a different battery.
+* Counterfactual (arithmetic, not a measured big model): model-on-everything = **100 model calls / 100 decisions**. At round 5 the system uses 26 external calls total (10 model + 16 network residual from fresh facts). Savings come from memory + code, not from a smaller model.
+* Honest caveats: (1) the CPU floor (~46 ms/decision) is real — code is free in money, not in latency; (2) the residual network 16/100 is fresh-fact coverage, finite pool (151) so it decays further then caps; (3) this is a simulated traffic mix, not customer data. The claim it supports is narrow and defensible: **on recurring operational volume, cost per decision decays with memory**.
+* Tests: 4 new (`tests/test_cost_per_decision.py`); suite **93/93**. Store is separate (`data/cost_memory.json`) — probes do not touch the longitudinal LTM.
