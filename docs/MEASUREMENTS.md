@@ -221,3 +221,15 @@
 * Steady state on the mixed battery = **24/100** (10 model = the open share + 14 network from the still-cold fresh pool). The within-run decay vanishes in run B precisely because the pool is already warm — the instrument now behaves as expected instead of decaying forever.
 * Consequence for the weekly series: rows before **2026-11-19** used random pools and are not curve points. With the fixed pool from 11-19 the timer measures a real curve, and the target is stated in advance: external/100 → 24 on the mixed battery, → 0 on warm.
 * Tests: 2 new (`test_warm_round_is_pool_only`, `test_pool_is_persisted_and_reused`); suite **95/95**.
+
+## 2026-11-14 · Memory integrity built (`feat/memory-integrity`) — gate PASS
+
+* Born from the 10-19 incident class (Japan→Paris enshrined at confidence 1.0) and from the cost-curve review (29% of the store was dead one-off instances). Four mechanisms, all local:
+  1. **Quarantine + self-veto** (`service/memory/store.py`): an entry marked quarantined is never served by any lookup path (exact / signature / similarity) and is never resurrected by a later `remember`. `record_outcome` auto-vetoes after ≥3 attempts with >50% failures. `requalify()` exists but is explicit only.
+  2. **Replay drift** (`Router(verify_memory_hits=True)`, **off by default**): a deterministic-tier memory hit is re-solved by the oracle; disagreement quarantines the cache and the oracle answer is served. Truth beats cache, at the cost of one solve per hit.
+  3. **Compaction** (`store.compact(max_per_sig=3)`): bounds untested one-off instances per `procedure_sig`, never touches entries with outcome history or facts without a sig.
+  4. **Root-cause fix**: the router no longer enshrines trace-less deterministic answers (nothing reusable, the oracle recomputes them free) — growth stops at the source, not just at cleanup.
+* Applied to the live stores (backups in `data/backups/`): `pilot_memory` **178 → 156** (−22 dead instances), `cost_memory` **322 → 279** (−43). Facts intact (pikachu/snorlax still served).
+* Replay over 36 deterministic entries found **1 mismatch**, and it was not staleness: a two-part question ("First: 20 people… Then: 190 people…") had the second half cached (`17955`) while the oracle answers the first (`190`). Both tiers answer *half* of an ambiguous question at confidence 1.0 → quarantined on live. Lesson recorded: **composed/multi-part questions are unsafe to cache or to serve from any single-answer tier**; the audit's naive equality cannot distinguish ambiguity from drift, so `--replay` is a dry run unless `--apply` is passed.
+* Ops: `memory-audit.timer` (Sun 06:00, `Persistent=true`) runs replay `--apply` on the pilot store and compaction on the cost store; log at `data/memory_audit.log`.
+* Tests: 10 new (`tests/test_memory_integrity.py`, incl. incident reproduction and composed-question cases); suite **105/105**.

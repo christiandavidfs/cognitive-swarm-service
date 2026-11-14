@@ -42,11 +42,14 @@ class Router:
     def __init__(self, memory=None, corroborator: Optional[Corroborator] = None,
                  retrievers: Optional[List[Connector]] = None,
                  backends: Optional[List[ResolverBackend]] = None,
-                 director=None, families=None):
+                 director=None, families=None, verify_memory_hits: bool = False):
         self.memory = memory
         self.corroborator = corroborator or Corroborator()
         self.retrievers: List[Connector] = list(retrievers or [])
         self.backends: List[ResolverBackend] = list(backends or [])
+        # Replay-drift: re-run the oracle on deterministic-tier memory hits.
+        # Off by default (costs a solve per hit); on for audits/trusted runs.
+        self.verify_memory_hits = bool(verify_memory_hits)
         if director is None:
             try:
                 from .orchestrator import Director
@@ -90,10 +93,44 @@ class Router:
                 continue
         return None
 
+    def _replay_check(self, question: str, rec: dict) -> Optional[bool]:
+        """Recompute a memory hit with the oracle.
+
+        Returns True (agrees), False (drift — caller quarantines), or None when
+        there is nothing deterministic to verify against (plain facts).
+        """
+        for backend in self.backends:
+            try:
+                if not backend.signature(question):
+                    continue
+            except Exception:
+                continue
+            try:
+                ans = backend.solve(question)
+            except Exception:
+                continue
+            if ans is None or ans.answer is None:
+                continue
+            cached = str(rec.get("answer", "")).strip().lower()
+            fresh = str(ans.answer).strip().lower()
+            return cached == fresh
+        return None
+
     def resolve(self, question: str) -> Resolution:
         # Tier 0: memory (signature-aware so near-duplicates never blur).
         if self.memory is not None:
             rec = self.memory.lookup(question, signature=self._signature(question))
+            if rec is not None and self.verify_memory_hits:
+                verdict = self._replay_check(question, rec)
+                if verdict is False:
+                    # Memory disagrees with the oracle: quarantine, then fall
+                    # through to the deterministic backend (truth beats cache).
+                    try:
+                        self.memory.record_outcome(question, False)
+                        self.memory.quarantine(question, reason="replay drift")
+                    except Exception:
+                        pass
+                    rec = None
             if rec is not None:
                 return Resolution(
                     answer=rec["answer"], confidence=rec.get("confidence", 1.0),
@@ -122,12 +159,18 @@ class Router:
                 self._observe_solve(question, task_type, backend.name, ans)
                 if self.memory is not None:
                     try:
-                        self.memory.remember(
-                            question, ans.answer, source=backend.name,
-                            tier=ans.tier, confidence=ans.confidence,
-                            trace=ans.trace,
-                            signature=self._signature(question),
-                        )
+                        # Archive only reusable skeletons (a trace → procedure_sig).
+                        # A trace-less deterministic answer is a one-off operand
+                        # instance the oracle recomputes for free; caching it
+                        # grows the store without adding truth (measured
+                        # 2026-11-14: 93/322 entries were dead instances).
+                        if ans.trace:
+                            self.memory.remember(
+                                question, ans.answer, source=backend.name,
+                                tier=ans.tier, confidence=ans.confidence,
+                                trace=ans.trace,
+                                signature=self._signature(question),
+                            )
                     except Exception:
                         pass
                 return Resolution(

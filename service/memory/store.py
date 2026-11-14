@@ -43,6 +43,12 @@ def _procedure_sig(trace: str) -> str:
     return hashlib.sha256(skeleton.encode()).hexdigest()[:16]
 
 
+# Self-veto policy: enough attempts with a bad rate quarantines the entry.
+# Quarantine is not deletion — the entry stays auditable but is never served.
+VETO_MIN_ATTEMPTS = 3
+VETO_MAX_FAILURE_RATE = 0.5
+
+
 class ProcedureStore:
     """VerifiedMemory-compatible store with trace support. Drop-in for Router memory."""
 
@@ -109,6 +115,11 @@ class ProcedureStore:
             "procedure_sig": procedure_sig or (_procedure_sig(trace) if trace else existing.get("procedure_sig")),
             "verified": verified,
             "hits": (existing.get("hits", 0) + 1),
+            # Quarantine survives re-archive: a bad answer is never resurrected
+            # by a later remember() of the same question.
+            "status": existing.get("status", "active"),
+            "quarantine_reason": existing.get("quarantine_reason"),
+            "quarantined_at": existing.get("quarantined_at"),
             # Learning counters survive re-remember (never reset: monotonic ratchet).
             "attempts": existing.get("attempts", 0),
             "successes": existing.get("successes", 0),
@@ -121,7 +132,12 @@ class ProcedureStore:
         self.remember(question, answer, trace=trace, procedure_sig=_procedure_sig(trace), **kwargs)
 
     def record_outcome(self, question: str, success: bool) -> None:
-        """Register a verified outcome for a stored entry (learning signal)."""
+        """Register a verified outcome for a stored entry (learning signal).
+
+        Self-veto: with enough evidence at a bad rate the entry is quarantined
+        immediately, so a proven-wrong answer stops being served without
+        waiting for a manual prune.
+        """
         import time as _time
         key = self.normalize(question)
         entry = self.entries.get(key)
@@ -131,7 +147,42 @@ class ProcedureStore:
         if success:
             entry["successes"] = entry.get("successes", 0) + 1
         entry["last_hit"] = _time.time()
+        rate = self.success_rate(entry)
+        if (rate is not None and entry["attempts"] >= VETO_MIN_ATTEMPTS
+                and (1.0 - rate) > VETO_MAX_FAILURE_RATE
+                and entry.get("status") != "quarantined"):
+            self.quarantine(question, reason=f"self-veto: {entry['successes']}/"
+                                            f"{entry['attempts']} successes")
+            return
         self.save()
+
+    # -- quarantine (integrity) -----------------------------------------
+    def quarantine(self, question: str, reason: str = "failed verification") -> bool:
+        """Stop serving an entry. Kept on disk for audit; never returned."""
+        import time as _time
+        entry = self.entries.get(self.normalize(question))
+        if entry is None:
+            return False
+        entry["status"] = "quarantined"
+        entry["quarantine_reason"] = reason
+        entry["quarantined_at"] = _time.time()
+        self.save()
+        return True
+
+    def requalify(self, question: str) -> bool:
+        """Explicit human/measured rehabilitation (never automatic)."""
+        entry = self.entries.get(self.normalize(question))
+        if entry is None:
+            return False
+        entry["status"] = "active"
+        entry["quarantine_reason"] = None
+        entry["quarantined_at"] = None
+        self.save()
+        return True
+
+    @staticmethod
+    def is_servable(entry: dict) -> bool:
+        return entry.get("status", "active") != "quarantined"
 
     @staticmethod
     def success_rate(entry: dict) -> Optional[float]:
@@ -145,12 +196,16 @@ class ProcedureStore:
         """Drop procedures proven bad (low success over enough attempts) or stale.
 
         Returns the number of removed entries. Never touches entries without
-        outcome history — no data, no execution.
+        outcome history — no data, no execution. Quarantined entries are
+        already unservable, so they are dropped here too.
         """
         import time as _time
         now = _time.time()
         doomed = []
         for key, entry in self.entries.items():
+            if entry.get("status") == "quarantined":
+                doomed.append(key)
+                continue
             attempts = entry.get("attempts", 0)
             if attempts >= min_attempts:
                 rate = (entry.get("successes", 0) / attempts) if attempts else 1.0
@@ -167,6 +222,56 @@ class ProcedureStore:
             self.save()
         return len(doomed)
 
+    def compact(self, max_per_sig: int = 3) -> int:
+        """Bound one-off instance growth: keep at most N exemplars per procedure.
+
+        A `procedure_sig` is the generalisation; extra operand instances add no
+        truth (the oracle recomputes them for free) and grow the store without
+        limit (measured 2026-11-14: 93/322 entries were dead one-off instances,
+        immune to prune()). Only untested entries are dropped — anything with
+        outcome history is evidence and stays.
+        """
+        groups: Dict[str, list] = {}
+        for key, entry in self.entries.items():
+            sig = entry.get("procedure_sig")
+            if not sig or entry.get("attempts", 0) > 0:
+                continue
+            groups.setdefault(sig, []).append(key)
+        doomed = []
+        for sig, keys in groups.items():
+            if len(keys) <= max_per_sig:
+                continue
+            keys.sort(key=lambda k: self.entries[k].get("last_hit")
+                      or self.entries[k].get("first_seen") or 0, reverse=True)
+            doomed.extend(keys[max_per_sig:])
+        for key in doomed:
+            del self.entries[key]
+        if doomed:
+            self.save()
+        return len(doomed)
+
+    def summary(self) -> dict:
+        """Audit counters: what is in the store and what is unservable."""
+        out = {"total": len(self.entries), "active": 0, "quarantined": 0,
+               "with_sig": 0, "without_sig": 0, "tested": 0, "untested": 0,
+               "by_tier": {}}
+        for entry in self.entries.values():
+            if self.is_servable(entry):
+                out["active"] += 1
+            else:
+                out["quarantined"] += 1
+            if entry.get("procedure_sig"):
+                out["with_sig"] += 1
+            else:
+                out["without_sig"] += 1
+            if entry.get("attempts", 0) > 0:
+                out["tested"] += 1
+            else:
+                out["untested"] += 1
+            tier = entry.get("tier") or "unknown"
+            out["by_tier"][tier] = out["by_tier"].get(tier, 0) + 1
+        return out
+
     def bump(self, question: str) -> None:
         key = self.normalize(question)
         if key in self.entries:
@@ -177,11 +282,15 @@ class ProcedureStore:
     def lookup(self, question: str, signature: Optional[str] = None) -> Optional[dict]:
         key = self.normalize(question)
         if key and key in self.entries:
-            self.bump(question)
-            return self.entries[key]
+            entry = self.entries[key]
+            if self.is_servable(entry):
+                self.bump(question)
+                return entry
         # Signature-aware path: identical (op, operands) only, else no match.
         if signature is not None:
             for entry in self.entries.values():
+                if not self.is_servable(entry):
+                    continue
                 if entry.get("signature") and entry["signature"] == signature:
                     self.bump(question)
                     return entry
@@ -192,6 +301,8 @@ class ProcedureStore:
             return None
         best, best_score = None, 0.0
         for entry in self.entries.values():
+            if not self.is_servable(entry):
+                continue
             e_sig = _significant(_tokens(entry.get("question", "")))
             if not e_sig:
                 continue
@@ -206,6 +317,8 @@ class ProcedureStore:
     def lookup_procedure(self, skeleton: str) -> Optional[dict]:
         sig = _procedure_sig(skeleton)
         for entry in self.entries.values():
+            if not self.is_servable(entry):
+                continue
             if entry.get("procedure_sig") == sig:
                 return entry
         return None
