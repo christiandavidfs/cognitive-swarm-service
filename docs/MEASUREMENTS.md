@@ -205,3 +205,19 @@
 * Counterfactual (arithmetic, not a measured big model): model-on-everything = **100 model calls / 100 decisions**. At round 5 the system uses 26 external calls total (10 model + 16 network residual from fresh facts). Savings come from memory + code, not from a smaller model.
 * Honest caveats: (1) the CPU floor (~46 ms/decision) is real — code is free in money, not in latency; (2) the residual network 16/100 is fresh-fact coverage, finite pool (151) so it decays further then caps; (3) this is a simulated traffic mix, not customer data. The claim it supports is narrow and defensible: **on recurring operational volume, cost per decision decays with memory**.
 * Tests: 4 new (`tests/test_cost_per_decision.py`); suite **93/93**. Store is separate (`data/cost_memory.json`) — probes do not touch the longitudinal LTM.
+
+## 2026-11-14 · Cost instrument v2 — fixed pool + warm ceiling (gate PASS)
+
+* Problem found reviewing the 11-12 rows: the recurring pool was re-drawn every run (date seed), so week-to-week rows mixed **learning** with **draw overlap**. The 11-09→11-12 drop (26→21) was partly accumulated facts catching a different pool — not a clean curve.
+* Fix: the pool is persisted (`data/cost_pool.json`, created once, reused) and every run ends with an **all-warm round** (pool only, nothing open) that measures the ceiling.
+* Measured live (`BACKENDS=cognitive_swarm`, scratch store, 3 rounds + warm):
+
+| run | r1 | r2 | r3 | warm | warm CPU |
+|---|---|---|---|---|---|
+| A (fresh pool, empty memory) | 72 | 47 | 37 | 15 | 28 ms |
+| B (same pool, warm memory) | 24 | 23 | 24 | **0** | **9 ms** |
+
+* **Ceiling confirmed empirically: a fully warm recurring pool costs 0 external calls and ~9 ms/decision.** That is the number the commercial claim is about, and it is not an extrapolation.
+* Steady state on the mixed battery = **24/100** (10 model = the open share + 14 network from the still-cold fresh pool). The within-run decay vanishes in run B precisely because the pool is already warm — the instrument now behaves as expected instead of decaying forever.
+* Consequence for the weekly series: rows before **2026-11-19** used random pools and are not curve points. With the fixed pool from 11-19 the timer measures a real curve, and the target is stated in advance: external/100 → 24 on the mixed battery, → 0 on warm.
+* Tests: 2 new (`test_warm_round_is_pool_only`, `test_pool_is_persisted_and_reused`); suite **95/95**.
