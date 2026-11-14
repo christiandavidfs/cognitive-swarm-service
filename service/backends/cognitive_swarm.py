@@ -8,11 +8,15 @@ this module unless ``cognitive_swarm`` resolves.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 
 from service.contracts import BackendAnswer, ResolverBackend, TaskType
 
 logger = logging.getLogger(__name__)
+
+# ISO dates (yyyy-mm-dd). The core reads them as subtraction; see solve().
+_ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
 
 def available() -> bool:
@@ -100,6 +104,12 @@ class CognitiveSwarmBackend(ResolverBackend):
             return op
 
     def solve(self, question: str) -> Optional[BackendAnswer]:
+        if _ISO_DATE.search(question):
+            # Fail honest: the core's math primitives read "2026-03-14" as
+            # 2026-3-14 = 2009 (measured 2026-11-14: date differences and
+            # day-of-week answered wrong at confidence 1.0). Refuse the tier
+            # instead of serving a silent wrong answer; the question escalates.
+            return None
         try:
             res = self._core_router().resolve(question)
         except Exception as e:
