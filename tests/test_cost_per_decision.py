@@ -2,7 +2,8 @@
 import random
 
 from service.contracts import Resolution
-from scripts.cost_per_decision import build_round, classify, summarize
+from scripts.cost_per_decision import (build_round, build_warm_round, classify,
+                                       load_or_create_pool, summarize)
 
 
 def test_build_round_composition():
@@ -61,3 +62,23 @@ def test_classify_cost_buckets():
     assert classify(Resolution(None, 0.4, "retrieval", "conflict")) == "conflict"
     assert classify(Resolution(None, 0.0, "none", "debate")) == "model"
     assert classify(Resolution("190", 1.0, "executor", "executor")) == "deterministic"
+
+
+def test_warm_round_is_pool_only():
+    pool = ["pikachu", "snorlax"]
+    items = build_warm_round(pool)
+    assert len(items) == 4                      # 2 names x 2 attributes
+    assert {c for c, _, _ in items} == {"recurring"}
+    kinds = sorted(sym[2] for _, _, sym in items)
+    assert kinds == ["height", "height", "type", "type"]
+
+
+def test_pool_is_persisted_and_reused(tmp_path):
+    path = tmp_path / "pool.json"
+    rng = random.Random(3)
+    names = [f"p{i}" for i in range(50)]
+    first = load_or_create_pool(path, rng, names, 10)
+    assert len(first) == 10 and path.exists()
+    # A different rng must NOT change the pool: the weekly series depends on it.
+    second = load_or_create_pool(path, random.Random(999), names, 10)
+    assert second == first

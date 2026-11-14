@@ -23,10 +23,19 @@ Expected: external calls/100 DECAYS round over round on recurring volume and
 approaches the open share (the floor). If it does not decay, the operational
 claim loses — record it as a negative gate.
 
+Two instrument safeguards (added 2026-11-14):
+  --pool-file   the recurring pool is persisted (data/cost_pool.json) and reused,
+                so week-to-week rows are comparable. Without it each run draws a
+                new pool and the "curve" mixes learning with draw luck.
+  warm round    a final all-warm round (pool only, nothing open) measures the
+                ceiling the curve converges to. Fully warm recurring volume
+                should reach 0 external calls.
+
   python scripts/cost_per_decision.py --rounds 5 --n 100
   python scripts/cost_per_decision.py --memory /tmp/... --log /tmp/...   # probe
 """
 import argparse
+import datetime
 import json
 import random
 import sys
@@ -48,6 +57,31 @@ from scripts.rounds_continuous import (IRREDUCIBLE, PokeAPIConnector,
 
 def sample_pool(rng, names, size):
     return rng.sample(list(names), size)
+
+
+def load_or_create_pool(path, rng, names, size):
+    """Persist the recurring pool so week-to-week rows are comparable.
+
+    A customer's recurring traffic is roughly the *same* questions. If the pool
+    is re-drawn every run, the weekly series measures draw luck plus fact
+    overlap, not learning. Create once, reuse afterwards.
+    """
+    path = _P(path)
+    if path.exists():
+        try:
+            data = json.loads(path.read_text())
+            pool = data.get("recurring") if isinstance(data, dict) else None
+            if pool:
+                return list(pool)
+        except (ValueError, OSError):
+            pass
+    pool = sample_pool(rng, names, size)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(
+        {"created": datetime.date.today().isoformat(), "recurring": pool},
+        indent=2,
+    ))
+    return pool
 
 
 def build_round(rng, recurring_pool, fresh_pool, n_total, recurring_share=0.6,
@@ -81,6 +115,17 @@ def build_round(rng, recurring_pool, fresh_pool, n_total, recurring_share=0.6,
         q, _ = IRREDUCIBLE[i % len(IRREDUCIBLE)]
         out.append(("open", q, None))
     return out
+
+
+def build_warm_round(recurring_pool):
+    """All-warm round: ask only the recurring set, both attributes.
+
+    With the pool fully cached the only external call left is the open share
+    (zero here), so this is the floor the weekly curve converges to.
+    """
+    kinds = [("type", "What type is {}?"), ("height", "How tall is {}?")]
+    return [("recurring", tmpl.format(n), ("fact", n, kind))
+            for n in recurring_pool for kind, tmpl in kinds]
 
 
 def classify(res):
@@ -132,6 +177,11 @@ def main():
     ap.add_argument("--rounds", type=int, default=5)
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--recurring-pool", type=int, default=40)
+    ap.add_argument("--pool-file", default="",
+                    help="persisted recurring pool (default: data/cost_pool.json) "
+                         "so weekly rows are comparable")
+    ap.add_argument("--no-warm", action="store_true",
+                    help="skip the all-warm ceiling round")
     ap.add_argument("--seed", type=int, default=0,
                     help="0 = live seed from today's date")
     ap.add_argument("--memory", default="",
@@ -150,9 +200,10 @@ def main():
 
     names = [p["name"] for p in
              fetch_json("https://pokeapi.co/api/v2/pokemon?limit=151", timeout_s=15)["results"]]
-    import datetime
     rng = random.Random(args.seed or int(datetime.date.today().strftime("%Y%m%d")))
-    recurring_pool = sample_pool(rng, names, args.recurring_pool)
+    recurring_pool = load_or_create_pool(
+        args.pool_file or (data / "cost_pool.json"),
+        rng, names, args.recurring_pool)
     fresh_pool = [n for n in names if n not in set(recurring_pool)]
 
     truth_cache = {}
@@ -168,8 +219,8 @@ def main():
         return truth_cache[name][kind]
 
     log_path = _P(args.log) if args.log else data / "cost_log.jsonl"
-    for rnd in range(1, args.rounds + 1):
-        items = build_round(rng, recurring_pool, fresh_pool, args.n)
+
+    def run_items(items):
         results = []
         for cohort, q, sym in items:
             exp = expected_for(sym)
@@ -179,11 +230,13 @@ def main():
             bucket = classify(r)
             correct = exp is not None and (r.answer or "").strip().lower() == exp.strip().lower()
             results.append((cohort, bucket, correct, exp is not None, lat))
-        row = summarize(rnd, results, args.n)
+        return results
+
+    def archive(row, label):
         row["date"] = datetime.date.today().isoformat()
         row["backends"] = [b.name for b in backends]
         row["memory_entries"] = mem.size()
-        print(f"round{rnd}: net/100={row['network_per_100']} "
+        print(f"{label}: net/100={row['network_per_100']} "
               f"model/100={row['model_per_100']} "
               f"external/100={row['external_per_100']} "
               f"cpu={row['cpu_ms_per_decision']}ms mem={row['memory_share']} "
@@ -191,6 +244,19 @@ def main():
               f"entries={row['memory_entries']}")
         with open(log_path, "a") as f:
             f.write(json.dumps(row) + "\n")
+
+    for rnd in range(1, args.rounds + 1):
+        items = build_round(rng, recurring_pool, fresh_pool, args.n)
+        archive(summarize(rnd, run_items(items), args.n), f"round{rnd}")
+
+    if not args.no_warm:
+        # Ceiling round: pool fully warm, nothing open. external/100 here is the
+        # floor the weekly curve converges to (memory/retrieval only).
+        warm = build_warm_round(recurring_pool)
+        row = summarize(args.rounds + 1, run_items(warm), len(warm))
+        row["mode"] = "warm"
+        archive(row, "warm ")
+
     print(f"log -> {log_path}")
     print("counterfactual: model-on-everything = 100 model calls / 100 decisions")
     print("read: external/100 must DECAY on recurring volume and approach the "
