@@ -141,3 +141,13 @@ def test_traced_answers_are_enshrined_with_a_procedure_sig():
     s = _tmp_store()
     Router(memory=s, backends=[Traced()]).resolve("What is the capital of France?")
     assert s.entries["what is the capital of france?"]["procedure_sig"]
+
+
+def test_iso_dates_fail_honest_instead_of_arithmetic():
+    """The core reads 2026-03-14 as 2026-3-14 = 2009 (measured 2026-11-14)."""
+    from service.backends.cognitive_swarm import _ISO_DATE, CognitiveSwarmBackend
+    b = CognitiveSwarmBackend()
+    assert b.solve("How many days are between 2026-03-14 and 2026-06-07?") is None
+    assert b.solve("What day of the week was 2026-03-14?") is None
+    # No false guard on ordinary arithmetic (works without the core installed).
+    assert _ISO_DATE.search("What does print(2+3) output?") is None

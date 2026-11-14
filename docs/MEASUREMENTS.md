@@ -233,3 +233,41 @@
 * Replay over 36 deterministic entries found **1 mismatch**, and it was not staleness: a two-part question ("First: 20 people… Then: 190 people…") had the second half cached (`17955`) while the oracle answers the first (`190`). Both tiers answer *half* of an ambiguous question at confidence 1.0 → quarantined on live. Lesson recorded: **composed/multi-part questions are unsafe to cache or to serve from any single-answer tier**; the audit's naive equality cannot distinguish ambiguity from drift, so `--replay` is a dry run unless `--apply` is passed.
 * Ops: `memory-audit.timer` (Sun 06:00, `Persistent=true`) runs replay `--apply` on the pilot store and compaction on the cost store; log at `data/memory_audit.log`.
 * Tests: 10 new (`tests/test_memory_integrity.py`, incl. incident reproduction and composed-question cases); suite **105/105**.
+
+## GATE L-1 (PRE-REGISTERED 2026-11-14) · Does the system learn PROCEDURES?
+
+Frozen before any learned-procedure code existed. Changing the battery, the families, the thresholds or the cycle count **voids the gate** (it must be re-registered under a new id). Thresholds are pinned by `tests/test_learning_gate.py`.
+
+**Battery** (`evals/learning_gate_battery.json`, 30 items, 5 families, 15 `train` / 15 `heldout`): roman→int, binary→decimal, median of five, LCM, smallest prime above N. Truth is recomputed from operands, so the answer key cannot drift. `heldout` is never shown to curiosity/learning; the gate reads **held-out only**, and any servable held-out entry in memory counts as leakage (run invalid).
+
+Families were chosen by live probe, not by intuition. Rejected: `percent` and `gcd` (the core already answers them correctly → no dynamic range) and every date-shaped family (next item).
+
+**Baseline measured** (`BACKENDS=cognitive_swarm`, offline, scratch memory):
+
+| family | n | acc | escalated | code |
+|---|---|---|---|---|
+| roman_to_int | 6 | 0.0 | 1.0 | 0.0 |
+| binary_to_decimal | 6 | 0.0 | 1.0 | 0.0 |
+| median | 6 | 0.0 | 1.0 | 0.0 |
+| lcm | 6 | 0.0 | 1.0 | 0.0 |
+| next_prime | 6 | 0.0 | 1.0 | 0.0 |
+| **held-out total** | **15** | **0.0** | **1.0** | **0.0** |
+
+Escalation starts at the ceiling (1.0), so the instrument has full dynamic range — unlike the decay battery, which sat at the floor.
+
+**Frozen decision rule** (at cycle ≥ 4; before that the status is IN PROGRESS, never FAIL):
+
+* **PASS** — `escalation` drops ≥ **30% relative** (≤ 0.70) **and** held-out `acc` ≥ **0.70** **and** held-out `code_share` ≥ **0.30** **and** `leakage == 0`. `new procedure_sigs` is reported as mechanism evidence, not a criterion.
+* **FAIL / claim refuted** — relative drop < **20%**, or `acc` < **0.50**, or `leakage > 0`.
+* **Consequence of FAIL**: the "the system learns capabilities" claim is refuted; positioning drops to *deterministic gateway + audited cache*, which is already measured (cost gate, memory integrity).
+
+**Run**:
+```
+python3 scripts/learning_gate.py --emit-battery evals/learning_gate_battery.json
+BACKENDS=cognitive_swarm python3 scripts/learning_gate.py --label baseline \
+    --save data/learning_gate_baseline.json
+BACKENDS=cognitive_swarm python3 scripts/learning_gate.py --cycle 4 \
+    --baseline evals/learning_gate_baseline.json
+```
+
+**Defect found while choosing families (open, upstream)**: the core parses ISO dates as arithmetic — `2026-03-14` → 2009 — so "days between 2026-03-14 and 2026-06-07" answers **2009 at confidence 1.0**, and "day of the week" the same. A service-side fail-honest guard now refuses the deterministic tier for any ISO-date question (`service/backends/cognitive_swarm.py`); the proper fix belongs in the core's `detect_reasoning_pattern`. Recorded here because it is the same failure class as the capital bug: wrong answer, full confidence, no signal.

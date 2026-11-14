@@ -1,0 +1,65 @@
+{
+  "label": "baseline",
+  "date": "2026-11-14",
+  "battery": "learning_gate_battery.json",
+  "all": {
+    "n": 30,
+    "acc": 0.0,
+    "escalated_share": 1.0,
+    "code_share": 0.0
+  },
+  "train": {
+    "n": 15,
+    "acc": 0.0,
+    "escalated_share": 1.0,
+    "code_share": 0.0
+  },
+  "heldout": {
+    "n": 15,
+    "acc": 0.0,
+    "escalated_share": 1.0,
+    "code_share": 0.0
+  },
+  "n": 15,
+  "acc": 0.0,
+  "escalated_share": 1.0,
+  "code_share": 0.0,
+  "leakage": 0,
+  "by_family": {
+    "roman_to_int": {
+      "n": 6,
+      "acc": 0.0,
+      "escalated_share": 1.0,
+      "code_share": 0.0
+    },
+    "binary_to_decimal": {
+      "n": 6,
+      "acc": 0.0,
+      "escalated_share": 1.0,
+      "code_share": 0.0
+    },
+    "median": {
+      "n": 6,
+      "acc": 0.0,
+      "escalated_share": 1.0,
+      "code_share": 0.0
+    },
+    "lcm": {
+      "n": 6,
+      "acc": 0.0,
+      "escalated_share": 1.0,
+      "code_share": 0.0
+    },
+    "next_prime": {
+      "n": 6,
+      "acc": 0.0,
+      "escalated_share": 1.0,
+      "code_share": 0.0
+    }
+  },
+  "battery_sigs": [],
+  "backends": [
+    "cognitive_swarm"
+  ],
+  "memory_entries": 0
+}

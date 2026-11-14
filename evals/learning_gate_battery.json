@@ -1,0 +1,314 @@
+[
+  {
+    "family": "roman_to_int",
+    "question": "Convert the Roman numeral XX to a number",
+    "expected": 20,
+    "operands": [
+      20
+    ],
+    "split": "train"
+  },
+  {
+    "family": "roman_to_int",
+    "question": "Convert the Roman numeral LXV to a number",
+    "expected": 65,
+    "operands": [
+      65
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "roman_to_int",
+    "question": "Convert the Roman numeral CXLV to a number",
+    "expected": 145,
+    "operands": [
+      145
+    ],
+    "split": "train"
+  },
+  {
+    "family": "roman_to_int",
+    "question": "Convert the Roman numeral CLIV to a number",
+    "expected": 154,
+    "operands": [
+      154
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "roman_to_int",
+    "question": "Convert the Roman numeral CXXVII to a number",
+    "expected": 127,
+    "operands": [
+      127
+    ],
+    "split": "train"
+  },
+  {
+    "family": "roman_to_int",
+    "question": "Convert the Roman numeral CXXXIII to a number",
+    "expected": 133,
+    "operands": [
+      133
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "binary_to_decimal",
+    "question": "What is the binary number 1100010011 in decimal?",
+    "expected": 787,
+    "operands": [
+      787
+    ],
+    "split": "train"
+  },
+  {
+    "family": "binary_to_decimal",
+    "question": "What is the binary number 10001001 in decimal?",
+    "expected": 137,
+    "operands": [
+      137
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "binary_to_decimal",
+    "question": "What is the binary number 1000000010 in decimal?",
+    "expected": 514,
+    "operands": [
+      514
+    ],
+    "split": "train"
+  },
+  {
+    "family": "binary_to_decimal",
+    "question": "What is the binary number 11110 in decimal?",
+    "expected": 30,
+    "operands": [
+      30
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "binary_to_decimal",
+    "question": "What is the binary number 111000101 in decimal?",
+    "expected": 453,
+    "operands": [
+      453
+    ],
+    "split": "train"
+  },
+  {
+    "family": "binary_to_decimal",
+    "question": "What is the binary number 1100100111 in decimal?",
+    "expected": 807,
+    "operands": [
+      807
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "median",
+    "question": "What is the median of 6, 22, 33, 56, 58?",
+    "expected": 33,
+    "operands": [
+      [
+        6,
+        22,
+        33,
+        56,
+        58
+      ]
+    ],
+    "split": "train"
+  },
+  {
+    "family": "median",
+    "question": "What is the median of 51, 53, 72, 81, 86?",
+    "expected": 72,
+    "operands": [
+      [
+        51,
+        53,
+        72,
+        81,
+        86
+      ]
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "median",
+    "question": "What is the median of 22, 31, 33, 37, 61?",
+    "expected": 33,
+    "operands": [
+      [
+        22,
+        31,
+        33,
+        37,
+        61
+      ]
+    ],
+    "split": "train"
+  },
+  {
+    "family": "median",
+    "question": "What is the median of 30, 50, 69, 75, 86?",
+    "expected": 69,
+    "operands": [
+      [
+        30,
+        50,
+        69,
+        75,
+        86
+      ]
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "median",
+    "question": "What is the median of 18, 27, 40, 53, 64?",
+    "expected": 40,
+    "operands": [
+      [
+        18,
+        27,
+        40,
+        53,
+        64
+      ]
+    ],
+    "split": "train"
+  },
+  {
+    "family": "median",
+    "question": "What is the median of 25, 26, 48, 75, 84?",
+    "expected": 48,
+    "operands": [
+      [
+        25,
+        26,
+        48,
+        75,
+        84
+      ]
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "lcm",
+    "question": "What is the least common multiple of 33 and 30?",
+    "expected": 330,
+    "operands": [
+      33,
+      30
+    ],
+    "split": "train"
+  },
+  {
+    "family": "lcm",
+    "question": "What is the least common multiple of 13 and 8?",
+    "expected": 104,
+    "operands": [
+      13,
+      8
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "lcm",
+    "question": "What is the least common multiple of 18 and 15?",
+    "expected": 90,
+    "operands": [
+      18,
+      15
+    ],
+    "split": "train"
+  },
+  {
+    "family": "lcm",
+    "question": "What is the least common multiple of 11 and 27?",
+    "expected": 297,
+    "operands": [
+      11,
+      27
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "lcm",
+    "question": "What is the least common multiple of 37 and 15?",
+    "expected": 555,
+    "operands": [
+      37,
+      15
+    ],
+    "split": "train"
+  },
+  {
+    "family": "lcm",
+    "question": "What is the least common multiple of 25 and 12?",
+    "expected": 300,
+    "operands": [
+      25,
+      12
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "next_prime",
+    "question": "What is the smallest prime number greater than 234?",
+    "expected": 239,
+    "operands": [
+      234
+    ],
+    "split": "train"
+  },
+  {
+    "family": "next_prime",
+    "question": "What is the smallest prime number greater than 154?",
+    "expected": 157,
+    "operands": [
+      154
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "next_prime",
+    "question": "What is the smallest prime number greater than 100?",
+    "expected": 101,
+    "operands": [
+      100
+    ],
+    "split": "train"
+  },
+  {
+    "family": "next_prime",
+    "question": "What is the smallest prime number greater than 86?",
+    "expected": 89,
+    "operands": [
+      86
+    ],
+    "split": "heldout"
+  },
+  {
+    "family": "next_prime",
+    "question": "What is the smallest prime number greater than 202?",
+    "expected": 211,
+    "operands": [
+      202
+    ],
+    "split": "train"
+  },
+  {
+    "family": "next_prime",
+    "question": "What is the smallest prime number greater than 145?",
+    "expected": 149,
+    "operands": [
+      145
+    ],
+    "split": "heldout"
+  }
+]
